@@ -72,8 +72,8 @@ Card {
 
         RoundIconButton {
             iconName: "navigation"
-            bg: M.primary
-            iconColor: M.primaryInk
+            bg: M.buttonFill
+            iconColor: M.buttonInk
             anchors.verticalCenter: parent.verticalCenter
             onClicked: root.goClicked()
         }

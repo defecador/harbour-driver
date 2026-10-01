@@ -47,6 +47,7 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: 24 * M.dp
+        visible: !M.restyled
         glowRadius: 10 * M.dp
         spread: 0.2
         color: Qt.rgba(0, 0, 0, 0.18)
@@ -56,6 +57,8 @@ Item {
         anchors.fill: parent
         radius: M.radiusSheet
         color: M.surface
+        border.width: M.restyled ? M.borderW : 0
+        border.color: M.borderColor
     }
 
     // Drag-catcher: sits behind contentColumn and spans the whole sheet, so a

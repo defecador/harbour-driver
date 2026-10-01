@@ -15,7 +15,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: M.radiusPill
-        color: M.primary
+        color: M.buttonFill
+        border.width: M.sign ? M.borderW : 0
+        border.color: M.borderColor
     }
 
     Row {
@@ -26,13 +28,13 @@ Item {
             visible: root.iconName.length > 0
             name: root.iconName
             size: 20 * M.dp
-            color: M.primaryInk
+            color: M.buttonInk
             anchors.verticalCenter: parent.verticalCenter
         }
         MText {
             text: root.text
             variant: "button"
-            color: M.primaryInk
+            color: M.buttonInk
             anchors.verticalCenter: parent.verticalCenter
         }
     }

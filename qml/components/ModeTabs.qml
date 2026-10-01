@@ -34,7 +34,9 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 4 * M.dp
                     radius: M.radiusChip
-                    color: tab.selected ? M.primary : "transparent"
+                    color: tab.selected ? M.buttonFill : "transparent"
+                    border.width: M.sign && tab.selected ? M.borderW : 0
+                    border.color: M.borderColor
                 }
 
                 Column {
@@ -44,12 +46,12 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         name: Fmt.modeIcon(modelData)
                         size: 22 * M.dp
-                        color: tab.selected ? M.primaryInk : M.inkMuted
+                        color: tab.selected ? M.buttonInk : M.inkMuted
                     }
                     MText {
                         anchors.horizontalCenter: parent.horizontalCenter
                         variant: "caption"
-                        color: tab.selected ? M.primaryInk : M.inkMuted
+                        color: tab.selected ? M.buttonInk : M.inkMuted
                         text: root.status[modelData] === "loading" ? qsTr("…")
                             : root.status[modelData] === "error" ? qsTr("!")
                             : root.bestDuration(modelData)

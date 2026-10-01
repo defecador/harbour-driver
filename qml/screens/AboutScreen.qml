@@ -11,6 +11,8 @@ Item {
     Column {
         anchors.fill: parent
 
+        Item { width: 1; height: M.topInset }
+
         Item {
             width: parent.width
             height: 56 * M.dp
@@ -32,7 +34,7 @@ Item {
 
         Flickable {
             width: parent.width
-            height: parent.height - 56 * M.dp
+            height: parent.height - 56 * M.dp - M.topInset
             clip: true
             contentHeight: body.height
 

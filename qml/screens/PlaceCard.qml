@@ -72,6 +72,10 @@ Item {
                     text: qsTr("Set as Work")
                     onClicked: AppSettings.work = root.place
                 }
+                TextButton {
+                    text: qsTr("Save place")
+                    onClicked: AppSettings.addSavedPlace(root.place)
+                }
             }
         }
     }

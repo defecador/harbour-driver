@@ -1,5 +1,4 @@
 import QtQuick 2.6
-import QtQuick.Window 2.2
 import "../theme"
 import "../components"
 import "../theme/Fmt.js" as Fmt
@@ -18,7 +17,7 @@ Item {
     Rectangle { anchors.fill: parent; color: M.bg }
 
     // About 1 cm of breathing room above the search field.
-    readonly property real topGap: 10 * Screen.pixelDensity
+    readonly property real topGap: M.topInset
 
     Column {
         anchors.fill: parent

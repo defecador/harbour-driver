@@ -348,6 +348,10 @@
         <source>Set as Work</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Save place</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PlannerScreen</name>
@@ -490,6 +494,34 @@
     </message>
     <message>
         <source>Vibrate on navigation prompts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Look</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Classic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Day or night</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Day</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Night</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

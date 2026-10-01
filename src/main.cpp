@@ -32,7 +32,7 @@
 #include "TripPlanner.h"
 
 #ifndef APP_VERSION
-#define APP_VERSION "0.8.0"
+#define APP_VERSION "0.8.1"
 #endif
 
 // Exposes small platform/dev-mode helpers to QML that don't belong on any single model.
@@ -100,19 +100,24 @@ class AppTools : public QObject
     Q_PROPERTY(bool fixtures READ fixtures CONSTANT)
     Q_PROPERTY(QString devScreen READ devScreen CONSTANT)
     Q_PROPERTY(bool devDark READ devDark CONSTANT)
+    Q_PROPERTY(bool devLight READ devLight CONSTANT)
     Q_PROPERTY(qreal dp READ dp CONSTANT)
+    Q_PROPERTY(qreal cm READ cm CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
 public:
-    explicit AppTools(AppSettings *settings, bool fixtures, const QString &devScreen, bool devDark, qreal dp, QObject *parent = nullptr)
-        : QObject(parent), m_settings(settings), m_fixtures(fixtures), m_devScreen(devScreen), m_devDark(devDark), m_dp(dp)
+    explicit AppTools(AppSettings *settings, bool fixtures, const QString &devScreen, bool devDark, bool devLight, qreal dp, QObject *parent = nullptr)
+        : QObject(parent), m_settings(settings), m_fixtures(fixtures), m_devScreen(devScreen), m_devDark(devDark), m_devLight(devLight), m_dp(dp)
     {
     }
 
     bool fixtures() const { return m_fixtures; }
     QString devScreen() const { return m_devScreen; }
     bool devDark() const { return m_devDark; }
+    bool devLight() const { return m_devLight; }
     qreal dp() const { return m_dp; }
+    // Pixels in one physical centimetre.
+    qreal cm() const { return QGuiApplication::primaryScreen()->physicalDotsPerInch() / 2.54; }
     QString appVersion() const { return QStringLiteral(APP_VERSION); }
 
     Q_INVOKABLE QString cacheDir() const
@@ -321,6 +326,7 @@ private:
     bool m_fixtures;
     QString m_devScreen;
     bool m_devDark;
+    bool m_devLight;
     qreal m_dp;
 };
 
@@ -339,6 +345,7 @@ int main(int argc, char *argv[])
     QString devScreen;
     QString devGrab;
     bool devDark = false;
+    bool devLight = false;
     for (int i = 1; i < argc; ++i) {
         const QString a = QString::fromLocal8Bit(argv[i]);
         if (a == QLatin1String("--fixtures"))
@@ -349,6 +356,8 @@ int main(int argc, char *argv[])
             devGrab = a.mid(11);
         else if (a == QLatin1String("--dev-dark"))
             devDark = true;
+        else if (a == QLatin1String("--dev-light"))
+            devLight = true;
     }
 
     const int regular = QFontDatabase::addApplicationFont(SailfishApp::pathTo(QStringLiteral("assets/fonts/FiraSans-Regular.ttf")).toLocalFile());
@@ -373,7 +382,7 @@ int main(int argc, char *argv[])
 
     const qreal shortSide = qMin(view->screen()->size().width(), view->screen()->size().height());
     const qreal dp = shortSide / 360.0;
-    AppTools tools(&settings, fixtures, devScreen, devDark, dp);
+    AppTools tools(&settings, fixtures, devScreen, devDark, devLight, dp);
 
     QQmlContext *ctx = view->rootContext();
     ctx->setContextProperty(QStringLiteral("AppSettings"), &settings);

@@ -40,7 +40,9 @@ Item {
 
                 Chip {
                     iconName: "home"
-                    label: AppSettings.home && AppSettings.home.title ? AppSettings.home.title : qsTr("Home")
+                    // A saved address turns the icon green; the label stays short.
+                    iconColor: AppSettings.home && AppSettings.home.title ? M.good : M.inkMuted
+                    label: qsTr("Home")
                     onClicked: {
                         if (AppSettings.home && AppSettings.home.title)
                             root.placeTapped(AppSettings.home)
@@ -50,7 +52,8 @@ Item {
                 }
                 Chip {
                     iconName: "work"
-                    label: AppSettings.work && AppSettings.work.title ? AppSettings.work.title : qsTr("Work")
+                    iconColor: AppSettings.work && AppSettings.work.title ? M.good : M.inkMuted
+                    label: qsTr("Work")
                     onClicked: {
                         if (AppSettings.work && AppSettings.work.title)
                             root.placeTapped(AppSettings.work)
@@ -62,6 +65,41 @@ Item {
                     iconName: "add_location_alt"
                     label: qsTr("Add place")
                     onClicked: root.searchTapped()
+                }
+            }
+
+            // Places you saved ("Save place" on a place card): a row under the
+            // buttons that swipes left and right. Press and hold removes one.
+            Flickable {
+                id: savedRow
+                visible: AppSettings.savedPlaces.length > 0
+                width: col.width
+                height: visible ? 36 * M.dp : 0
+                contentWidth: savedItems.width + M.spacingM * 2
+                contentHeight: height
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentWidth > width
+                clip: true
+
+                Row {
+                    id: savedItems
+                    x: M.spacingM
+                    spacing: M.spacingS
+                    Repeater {
+                        model: AppSettings.savedPlaces
+                        delegate: Chip {
+                            iconName: "place"
+                            iconColor: M.good
+                            // First part of the address only: the full line is too long for a chip.
+                            label: (modelData.title || "").split(",")[0]
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: root.placeTapped(modelData)
+                                onPressAndHold: AppSettings.removeSavedPlace(index)
+                            }
+                        }
+                    }
                 }
             }
 

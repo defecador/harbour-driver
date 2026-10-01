@@ -342,6 +342,8 @@ Item {
     BottomSheet {
         id: sheet
         z: 10
+        // Room for the saved-places row when there is one.
+        peekHeight: (172 + (AppSettings.savedPlaces.length > 0 ? 52 : 0)) * M.dp
         visible: stack.depth === 0
 
         HomeSheet {
@@ -413,6 +415,14 @@ Item {
             root.startPlanning(root.devSamplePlace())
             TripPlanner.selectedMode = "car"
             root.startNavigation(true)
+        } else if (name === "homeset") {
+            // Home and Work saved with long addresses (use a blank config dir).
+            AppSettings.home = {"title": "Karl-Liebknecht-Strasse 1, 10178 Berlin, Germany", "address": "", "lat": 52.52, "lng": 13.40}
+            AppSettings.work = {"title": "Unter den Linden 77, 10117 Berlin, Germany", "address": "", "lat": 52.516, "lng": 13.38}
+            AppSettings.addSavedPlace({"title": "Tempelhofer Feld, Berlin, Germany", "address": "", "lat": 52.47, "lng": 13.40})
+            AppSettings.addSavedPlace({"title": "Cafe Einstein Stammhaus, Kurfuerstenstrasse 58", "address": "", "lat": 52.50, "lng": 13.36})
+            AppSettings.addSavedPlace({"title": "Mauerpark, Berlin", "address": "", "lat": 52.54, "lng": 13.40})
+            AppSettings.addSavedPlace({"title": "Treptower Park, Berlin", "address": "", "lat": 52.49, "lng": 13.46})
         } else if (name === "navwalkstop") {
             // Simulated walk with a tapped-map "add stop" candidate showing.
             root.startPlanning(root.devSamplePlace())

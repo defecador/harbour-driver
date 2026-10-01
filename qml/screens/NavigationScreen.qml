@@ -167,8 +167,25 @@ Item {
         // connection, green once it's time to get off.
         color: Navigator.mode === "transit" && Navigator.transitPhase === "alight" ? M.good
                 : (Navigator.state === "guiding" && (Navigator.offRoute || (root.onFootOrWheels && Navigator.hurry))) ? M.traffic
-                : M.primary
+                : M.banner
         visible: Navigator.state !== "arrived"
+
+        Rectangle {
+            visible: M.sign
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: M.borderW * 1.5
+            color: M.borderColor
+        }
+        Rectangle {
+            visible: M.quiet
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 4 * M.dp
+            color: M.primary
+        }
 
         Row {
             visible: root.onFootOrWheels && Navigator.state === "guiding" && !Navigator.rerouting
@@ -442,8 +459,8 @@ Item {
             spacing: M.spacingXs
             RoundIconButton {
                 iconName: "add"
-                bg: M.primary
-                iconColor: M.primaryInk
+                bg: M.buttonFill
+                iconColor: M.buttonInk
                 onClicked: root.addStopRequested()
             }
             RoundIconButton {

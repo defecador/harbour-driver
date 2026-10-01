@@ -28,6 +28,8 @@ Item {
     Column {
         anchors.fill: parent
 
+        Item { width: 1; height: M.topInset }
+
         Item {
             width: parent.width
             height: 88 * M.dp
@@ -60,7 +62,7 @@ Item {
 
         Flickable {
             width: parent.width
-            height: parent.height - 88 * M.dp - 64 * M.dp
+            height: parent.height - 88 * M.dp - 64 * M.dp - M.topInset
             clip: true
             contentHeight: timeline.height + M.spacingM
 

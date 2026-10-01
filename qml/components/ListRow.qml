@@ -28,7 +28,7 @@ Item {
             visible: root.iconName.length > 0
             width: 36 * M.dp
             height: 36 * M.dp
-            radius: width / 2
+            radius: M.restyled ? 0 : width / 2
             color: root.iconBg
             anchors.verticalCenter: parent.verticalCenter
             Icon {

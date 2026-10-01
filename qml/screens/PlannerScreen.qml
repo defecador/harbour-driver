@@ -48,6 +48,8 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
 
+        Item { width: 1; height: M.topInset }
+
         Item {
             width: parent.width
             height: 100 * M.dp

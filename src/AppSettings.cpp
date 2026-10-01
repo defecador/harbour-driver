@@ -47,6 +47,16 @@ void AppSettings::setVibration(bool on)
     emit vibrationChanged();
 }
 
+// "new" = street-sign look by day, quiet look by night; "classic" = the original Material-style look.
+QString AppSettings::uiStyle() const { return m_s.value(QStringLiteral("ui/style"), QStringLiteral("new")).toString(); }
+void AppSettings::setUiStyle(const QString &s)
+{
+    if (s == uiStyle()) return;
+    m_s.setValue(QStringLiteral("ui/style"), s);
+    m_s.sync();
+    emit uiStyleChanged();
+}
+
 bool AppSettings::view3d() const { return m_s.value(QStringLiteral("map/view3d"), true).toBool(); }
 void AppSettings::setView3d(bool on)
 {
@@ -99,6 +109,32 @@ void AppSettings::addRecent(const QVariantMap &place)
     m_s.setValue(QStringLiteral("places/recents"), list);
     m_s.sync();
     emit recentsChanged();
+}
+
+QVariantList AppSettings::savedPlaces() const { return m_s.value(QStringLiteral("places/saved")).toList(); }
+
+void AppSettings::addSavedPlace(const QVariantMap &place)
+{
+    QVariantList list = savedPlaces();
+    const QString title = place.value(QStringLiteral("title")).toString();
+    for (const QVariant &v : list)
+        if (v.toMap().value(QStringLiteral("title")).toString() == title)
+            return;
+    list.append(place);
+    m_s.setValue(QStringLiteral("places/saved"), list);
+    m_s.sync();
+    emit savedPlacesChanged();
+}
+
+void AppSettings::removeSavedPlace(int index)
+{
+    QVariantList list = savedPlaces();
+    if (index < 0 || index >= list.size())
+        return;
+    list.removeAt(index);
+    m_s.setValue(QStringLiteral("places/saved"), list);
+    m_s.sync();
+    emit savedPlacesChanged();
 }
 
 void AppSettings::clearRecents()

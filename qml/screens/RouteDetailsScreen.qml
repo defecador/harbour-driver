@@ -15,6 +15,8 @@ Item {
     Column {
         anchors.fill: parent
 
+        Item { width: 1; height: M.topInset }
+
         Item {
             width: parent.width
             height: 88 * M.dp
@@ -48,7 +50,7 @@ Item {
 
         ListView {
             width: parent.width
-            height: parent.height - 88 * M.dp - 64 * M.dp
+            height: parent.height - 88 * M.dp - 64 * M.dp - M.topInset
             clip: true
             model: root.itinerary.actions || []
             delegate: ListRow {

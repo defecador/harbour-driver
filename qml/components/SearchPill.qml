@@ -32,6 +32,8 @@ Item {
         anchors.fill: parent
         radius: M.radiusPill
         color: M.surface
+        border.width: M.restyled ? M.borderW : 0
+        border.color: M.borderColor
     }
 
     Row {

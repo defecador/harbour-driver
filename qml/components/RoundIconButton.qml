@@ -16,7 +16,7 @@ Item {
 
     RectangularGlow {
         anchors.fill: circle
-        visible: root.elevation > 0
+        visible: root.elevation > 0 && !M.restyled
         glowRadius: 5 * M.dp * root.elevation
         spread: 0.15
         color: Qt.rgba(0, 0, 0, 0.2)
@@ -26,8 +26,10 @@ Item {
     Rectangle {
         id: circle
         anchors.fill: parent
-        radius: width / 2
+        radius: M.restyled ? 0 : width / 2
         color: root.bg
+        border.width: M.restyled ? M.borderW : 0
+        border.color: M.borderColor
     }
 
     Icon {

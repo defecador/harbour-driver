@@ -12,8 +12,10 @@ Item {
     Rectangle {
         id: track
         anchors.fill: parent
-        radius: height / 2
-        color: root.checked ? M.primary : M.outline
+        radius: M.restyled ? 0 : height / 2
+        color: root.checked ? M.buttonFill : (M.quiet ? M.surfaceVariant : M.outline)
+        border.width: M.sign ? M.borderW : 0
+        border.color: M.borderColor
         Behavior on color { ColorAnimation { duration: M.fadeShort } }
     }
 
@@ -21,8 +23,8 @@ Item {
         id: thumb
         width: 20 * M.dp
         height: 20 * M.dp
-        radius: width / 2
-        color: "#ffffff"
+        radius: M.restyled ? 0 : width / 2
+        color: M.sign ? "#111111" : "#ffffff"
         anchors.verticalCenter: parent.verticalCenter
         x: root.checked ? (parent.width - width - 3 * M.dp) : 3 * M.dp
         Behavior on x { NumberAnimation { duration: M.fadeShort; easing.type: Easing.OutQuad } }

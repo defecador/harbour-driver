@@ -22,6 +22,8 @@ Item {
     Column {
         anchors.fill: parent
 
+        Item { width: 1; height: M.topInset }
+
         Item {
             width: parent.width
             height: 56 * M.dp
@@ -111,6 +113,44 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     checked: AppSettings.vibration
                     onToggled: AppSettings.vibration = checked
+                }
+            }
+
+            MText { variant: "caption"; color: M.inkMuted; text: qsTr("Look") }
+            Row {
+                spacing: M.spacingS
+                Chip {
+                    label: qsTr("New")
+                    filled: AppSettings.uiStyle !== "classic"
+                    onClicked: AppSettings.uiStyle = "new"
+                }
+                Chip {
+                    label: qsTr("Classic")
+                    filled: AppSettings.uiStyle === "classic"
+                    onClicked: AppSettings.uiStyle = "classic"
+                }
+            }
+
+            MText { variant: "caption"; color: M.inkMuted; text: qsTr("Day or night") }
+            Row {
+                spacing: M.spacingS
+                Chip {
+                    iconName: "brightness_auto"
+                    label: qsTr("System")
+                    filled: AppSettings.theme === "auto"
+                    onClicked: AppSettings.theme = "auto"
+                }
+                Chip {
+                    iconName: "light_mode"
+                    label: qsTr("Day")
+                    filled: AppSettings.theme === "light"
+                    onClicked: AppSettings.theme = "light"
+                }
+                Chip {
+                    iconName: "dark_mode"
+                    label: qsTr("Night")
+                    filled: AppSettings.theme === "dark"
+                    onClicked: AppSettings.theme = "dark"
                 }
             }
 

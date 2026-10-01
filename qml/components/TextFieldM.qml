@@ -25,10 +25,10 @@ Item {
         Rectangle {
             width: parent.width
             height: 44 * M.dp
-            radius: 8 * M.dp
+            radius: M.radiusChip
             color: M.surfaceVariant
-            border.width: input.activeFocus ? Math.max(1, 2 * M.dp) : 0
-            border.color: M.primary
+            border.width: input.activeFocus ? Math.max(1, 2 * M.dp) : (M.sign ? M.borderW : 0)
+            border.color: input.activeFocus ? M.primary : M.borderColor
 
             TextInput {
                 id: input
