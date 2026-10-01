@@ -28,7 +28,11 @@ QPointer<QNetworkReply> HereClient::get(const QUrl &url, const QString &fixture,
         return QPointer<QNetworkReply>();
     }
 
-    qInfo("HERE GET %s", qPrintable(HereUrls::redact(url.toString())));
+    // Third-party routing URLs carry the trip's coordinates: log the host only.
+    if (url.host().endsWith(QLatin1String("hereapi.com")))
+        qInfo("HERE GET %s", qPrintable(HereUrls::redact(url.toString())));
+    else
+        qInfo("GET %s", qPrintable(url.host()));
     QNetworkRequest req(url);
     req.setRawHeader("User-Agent", QByteArray("harbour-matka/") + QCoreApplication::applicationVersion().toUtf8()
                      + " (Sailfish OS)");

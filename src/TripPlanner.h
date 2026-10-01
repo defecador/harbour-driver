@@ -2,6 +2,7 @@
 #define TRIPPLANNER_H
 
 #include <QNetworkReply>
+#include <QHash>
 #include <QObject>
 #include <QPointer>
 #include <QVariantMap>
@@ -50,6 +51,8 @@ signals:
 
 private:
     void request(const QString &mode);
+    void requestBicycle();
+    void bicyclePartDone(int gen, const QString &variant, bool ok, const QVariantList &items, const QString &error);
     void finish(const QString &mode, bool ok, const QVariantList &items, const QString &error);
 
     AppSettings *m_settings;
@@ -59,6 +62,9 @@ private:
     int m_index = 0;
     int m_generation = 0;
     QList<QPointer<QNetworkReply>> m_pending;
+    QHash<QString, QVariantMap> m_bikeParts;   // variant -> itinerary, as each arrives
+    int m_bikeOutstanding = 0;
+    QString m_bikeError;
 };
 
 #endif

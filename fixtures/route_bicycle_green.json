@@ -1,0 +1,45 @@
+{
+  "trip": {
+    "status": 0,
+    "units": "kilometers",
+    "summary": {
+      "time": 1020,
+      "length": 4.6
+    },
+    "legs": [
+      {
+        "shape": "_urdcBofmqXnoBnmMv|AntLn}@ntLnKvbS",
+        "maneuvers": [
+          {
+            "type": 1,
+            "instruction": "Bike west on Karl-Liebknecht-Stra\u00dfe.",
+            "time": 300,
+            "length": 1.3,
+            "begin_shape_index": 0
+          },
+          {
+            "type": 10,
+            "instruction": "Turn right to stay on the cycle path through Monbijoupark.",
+            "time": 420,
+            "length": 1.9,
+            "begin_shape_index": 2
+          },
+          {
+            "type": 16,
+            "instruction": "Bear left onto Unter den Linden.",
+            "time": 300,
+            "length": 1.4,
+            "begin_shape_index": 3
+          },
+          {
+            "type": 4,
+            "instruction": "You have arrived at your destination.",
+            "time": 0,
+            "length": 0.0,
+            "begin_shape_index": 4
+          }
+        ]
+      }
+    ]
+  }
+}

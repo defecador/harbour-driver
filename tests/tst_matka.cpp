@@ -4,6 +4,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalSpy>
+#include <QUrlQuery>
 #include <cmath>
 
 #include "FlexiblePolyline.h"
@@ -33,6 +34,11 @@ private slots:
     void urls_routeAddsCourseWhenGiven();
     void urls_pedestrianRouteSendsDepartureTimeAny();
     void urls_carRouteOmitsDepartureTime();
+    void urls_bicycleShortestSetsRoutingMode();
+    void urls_viasAreAskedToPassThrough();
+    void urls_valhallaRequestCarriesViasAndNoKey();
+    void parser_valhallaRouteBecomesAnItinerary();
+    void navigator_stopIsReachedByWalkingUpToIt();
     void urls_transitReturnIncludesActions();
     void urls_redactHidesApiKeyValue();
 
@@ -46,6 +52,9 @@ private slots:
     void navigator_firesArrivedNearFinalPoint();
     void navigator_thenPreviewOnlyWhenManeuversAreClose();
     void navigator_announcesEachTierExactlyOnce();
+    void navigator_addStopIsWalkAndBikeOnly();
+    void navigator_failedAddStopIsDropped();
+    void navigator_stopIsReachedAndTripContinues();
     void navigator_offRouteWaitsBeforeRerouting();
     void navigator_rerouteRespectsCooldownAndPerTripLimit();
 
@@ -236,6 +245,66 @@ void TstMatka::urls_carRouteOmitsDepartureTime()
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("car"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0);
     QVERIFY(!url.toString().contains(QStringLiteral("departureTime")));
+}
+
+void TstMatka::urls_bicycleShortestSetsRoutingMode()
+{
+    const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("bicycle"), {52.0, 13.0}, {52.1, 13.1},
+                                     QStringLiteral("en-GB"), QStringLiteral("metric"), 0, -1, {}, QStringLiteral("short"));
+    QVERIFY(url.toString().contains(QStringLiteral("routingMode=short")));
+    const QUrl plain = HereUrls::route(QStringLiteral("k"), QStringLiteral("bicycle"), {52.0, 13.0}, {52.1, 13.1},
+                                       QStringLiteral("en-GB"), QStringLiteral("metric"), 0);
+    QVERIFY(!plain.toString().contains(QStringLiteral("routingMode")));
+}
+
+void TstMatka::urls_viasAreAskedToPassThrough()
+{
+    const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("pedestrian"), {52.0, 13.0}, {52.1, 13.1},
+                                     QStringLiteral("en-GB"), QStringLiteral("metric"), 0, -1, {{52.05, 13.05}});
+    const QString s = QUrl::fromPercentEncoding(url.toString().toUtf8());
+    QVERIFY(s.contains(QStringLiteral("via=52.050000,13.050000!passThrough=true")));
+}
+
+void TstMatka::urls_valhallaRequestCarriesViasAndNoKey()
+{
+    const QUrl url = HereUrls::valhallaBicycle({52.0, 13.0}, {52.1, 13.1}, {{52.05, 13.05}},
+                                               QStringLiteral("en-US"), QStringLiteral("metric"));
+    QCOMPARE(url.host(), QStringLiteral("valhalla1.openstreetmap.de"));
+    QVERIFY(!url.toString().contains(QStringLiteral("apiKey")));
+    const QJsonObject req = QJsonDocument::fromJson(QUrlQuery(url).queryItemValue(QStringLiteral("json"), QUrl::FullyDecoded).toUtf8()).object();
+    const QJsonArray locs = req.value(QStringLiteral("locations")).toArray();
+    QCOMPARE(locs.size(), 3);
+    QCOMPARE(locs.at(1).toObject().value(QStringLiteral("type")).toString(), QStringLiteral("through"));
+    QCOMPARE(req.value(QStringLiteral("costing")).toString(), QStringLiteral("bicycle"));
+}
+
+void TstMatka::parser_valhallaRouteBecomesAnItinerary()
+{
+    // Shape: 5 points encoded with 6-decimal precision (52.5208,13.4094 ... 52.5163,13.3777).
+    const QString json = QStringLiteral(
+        "{\"trip\":{\"status\":0,\"summary\":{\"time\":1020,\"length\":4.6},\"legs\":[{"
+        "\"shape\":\"_urdcBofmqXnoBnmMv|AntLn}@ntLnKvbS\",\"maneuvers\":["
+        "{\"type\":1,\"instruction\":\"Bike west.\",\"time\":300,\"length\":1.3,\"begin_shape_index\":0},"
+        "{\"type\":10,\"instruction\":\"Turn right.\",\"time\":420,\"length\":1.9,\"begin_shape_index\":2},"
+        "{\"type\":4,\"instruction\":\"Arrived.\",\"time\":0,\"length\":0.0,\"begin_shape_index\":4}]}]}}");
+    const QVariantList items = ItineraryParser::parseValhalla(QJsonDocument::fromJson(json.toUtf8()).object(), QStringLiteral("bicycle"));
+    QCOMPARE(items.size(), 1);
+    const QVariantMap it = items.first().toMap();
+    QCOMPARE(it.value(QStringLiteral("length")).toInt(), 4600);
+    QCOMPARE(it.value(QStringLiteral("duration")).toInt(), 1020);
+    const QVariantList coords = it.value(QStringLiteral("coordinates")).toList();
+    QCOMPARE(coords.size(), 5);
+    QVERIFY(qAbs(coords.first().value<QGeoCoordinate>().latitude() - 52.5208) < 1e-4);
+    QVERIFY(qAbs(coords.last().value<QGeoCoordinate>().longitude() - 13.3777) < 1e-4);
+    const QVariantList actions = it.value(QStringLiteral("actions")).toList();
+    QCOMPARE(actions.size(), 3);
+    QCOMPARE(actions.at(0).toMap().value(QStringLiteral("action")).toString(), QStringLiteral("depart"));
+    QCOMPARE(actions.at(1).toMap().value(QStringLiteral("action")).toString(), QStringLiteral("turn"));
+    QCOMPARE(actions.at(1).toMap().value(QStringLiteral("direction")).toString(), QStringLiteral("right"));
+    QCOMPARE(actions.at(1).toMap().value(QStringLiteral("offset")).toInt(), 2);
+    QCOMPARE(actions.at(2).toMap().value(QStringLiteral("action")).toString(), QStringLiteral("arrive"));
+    // A failed Valhalla reply (no "trip") yields no routes.
+    QVERIFY(ItineraryParser::parseValhalla(QJsonObject(), QStringLiteral("bicycle")).isEmpty());
 }
 
 void TstMatka::urls_transitReturnIncludesActions()
@@ -441,6 +510,133 @@ void TstMatka::navigator_announcesEachTierExactlyOnce()
     QCOMPARE(spy.last().at(1).toString(), QStringLiteral("now"));
     feedAt(96, 6000);   // Same position again: no repeat announcements.
     QCOMPARE(spy.count(), 3);
+}
+
+void TstMatka::navigator_addStopIsWalkAndBikeOnly()
+{
+    const auto itinerary = makeItinerary(QStringLiteral("car"),
+            {onTestRoute(0), onTestRoute(400)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 60, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    Navigator nav(nullptr, nullptr);
+    int requests = 0;
+    nav.setRerouteRequesterForTesting([&](double, double, int) { ++requests; });
+    nav.start(itinerary, destOf(onTestRoute(400)));
+    const auto p = onTestRoute(10);
+    nav.updatePosition(p.latitude(), p.longitude(), 5.0, 10.0, 0.0, 1000);
+    QVariantMap place;
+    place[QStringLiteral("title")] = QStringLiteral("Cafe");
+    nav.addStop(place);
+    QCOMPARE(nav.stopCount(), 0);
+    QCOMPARE(requests, 0);
+}
+
+void TstMatka::navigator_failedAddStopIsDropped()
+{
+    const auto itinerary = makeItinerary(QStringLiteral("pedestrian"),
+            {onTestRoute(0), onTestRoute(400)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 300, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    Navigator nav(nullptr, nullptr);
+    int requests = 0;
+    nav.setRerouteRequesterForTesting([&](double, double, int) { ++requests; });
+    nav.start(itinerary, destOf(onTestRoute(400)));
+    const auto p = onTestRoute(10);
+    nav.updatePosition(p.latitude(), p.longitude(), 5.0, 1.4, 0.0, 1000);
+    QSignalSpy announces(&nav, &Navigator::announce);
+
+    QVariantMap place;
+    place[QStringLiteral("title")] = QStringLiteral("Cafe");
+    nav.addStop(place);
+
+    // One routing attempt was made; with no way to carry it out the stop is dropped.
+    QCOMPARE(requests, 1);
+    QCOMPARE(nav.stopCount(), 0);
+    bool sawFailure = false;
+    for (const auto &a : announces)
+        sawFailure = sawFailure || a.at(1).toString() == QStringLiteral("stopFailed");
+    QVERIFY(sawFailure);
+}
+
+void TstMatka::navigator_stopIsReachedAndTripContinues()
+{
+    const auto firstRoute = makeItinerary(QStringLiteral("pedestrian"),
+            {onTestRoute(0), onTestRoute(300)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 220, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    // The same walk re-planned through a stop at 150 m: HERE ends the first
+    // section with an "arrive" and starts the second with a "depart".
+    const auto viaRoute = makeItinerary(QStringLiteral("pedestrian"),
+            {onTestRoute(0), onTestRoute(150), onTestRoute(300)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 110, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QStringLiteral("Arrive"), 0, 1),
+             makeAction(QStringLiteral("depart"), QString(), QString(), 110, 1),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 2)});
+
+    Navigator nav(nullptr, nullptr);
+    nav.start(firstRoute, destOf(onTestRoute(300)));
+    const auto p0 = onTestRoute(10);
+    nav.updatePosition(p0.latitude(), p0.longitude(), 5.0, 1.4, 0.0, 1000);
+
+    QVariantMap cafe;
+    cafe[QStringLiteral("title")] = QStringLiteral("Cafe");
+    nav.m_stops.append(cafe);
+    nav.m_addingStop = true;
+    nav.m_rerouting = true;
+    nav.applyRerouteResult(true, QVariantList{viaRoute});
+
+    QCOMPARE(nav.stopCount(), 1);
+    QCOMPARE(nav.instruction(), QStringLiteral("Stop: Cafe"));
+
+    QSignalSpy announces(&nav, &Navigator::announce);
+    QSignalSpy arrivedSpy(&nav, &Navigator::arrived);
+    auto feedAt = [&](double m, qint64 ts) {
+        const auto p = onTestRoute(m);
+        nav.updatePosition(p.latitude(), p.longitude(), 5.0, 1.4, 0.0, ts);
+    };
+
+    feedAt(100, 2000);
+    QCOMPARE(nav.stopCount(), 1);
+    feedAt(160, 3000);                       // past the stop
+    QCOMPARE(nav.stopCount(), 0);
+    QCOMPARE(nav.state(), QStringLiteral("guiding"));
+    QCOMPARE(arrivedSpy.count(), 0);
+    bool sawReached = false;
+    for (const auto &a : announces)
+        sawReached = sawReached || a.at(1).toString() == QStringLiteral("stopReached");
+    QVERIFY(sawReached);
+
+    feedAt(298, 4000);                       // the real destination
+    QCOMPARE(nav.state(), QStringLiteral("arrived"));
+    QCOMPARE(arrivedSpy.count(), 1);
+}
+
+void TstMatka::navigator_stopIsReachedByWalkingUpToIt()
+{
+    // Pass-through stops have no "arrive" maneuver: walking up to the stop is what counts.
+    const auto route = makeItinerary(QStringLiteral("pedestrian"),
+            {onTestRoute(0), onTestRoute(300)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 220, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    Navigator nav(nullptr, nullptr);
+    nav.start(route, destOf(onTestRoute(300)));
+    QVariantMap cafe;
+    cafe[QStringLiteral("title")] = QStringLiteral("Cafe");
+    cafe[QStringLiteral("lat")] = onTestRoute(150).latitude();
+    cafe[QStringLiteral("lng")] = onTestRoute(150).longitude();
+    nav.m_stops.append(cafe);
+
+    auto feedAt = [&](double m, qint64 ts) {
+        const auto p = onTestRoute(m);
+        nav.updatePosition(p.latitude(), p.longitude(), 5.0, 1.4, 0.0, ts);
+    };
+    feedAt(60, 1000);
+    QCOMPARE(nav.stopCount(), 1);
+    feedAt(100, 2000);                       // 50 m short: not yet
+    QCOMPARE(nav.stopCount(), 1);
+    feedAt(130, 3000);                       // 20 m short: reached
+    QCOMPARE(nav.stopCount(), 0);
+    QCOMPARE(nav.state(), QStringLiteral("guiding"));
 }
 
 void TstMatka::navigator_offRouteWaitsBeforeRerouting()

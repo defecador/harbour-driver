@@ -63,6 +63,10 @@ Item {
         if (mapLoader.item) mapLoader.item.fitCoordinates(coords, preserve)
     }
 
+    function fitInRect(coords, x, y, w, h) {
+        if (mapLoader.item) mapLoader.item.fitInRect(coords, x, y, w, h)
+    }
+
     function centerOnMe() {
         if (mapLoader.item && root.hasFix) {
             mapLoader.item.setCenter(root.myLat, root.myLng)

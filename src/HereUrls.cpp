@@ -1,5 +1,9 @@
 #include "HereUrls.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 #include <QRegularExpression>
 #include <QUrlQuery>
 
@@ -49,7 +53,8 @@ QUrl HereUrls::revgeocode(const QString &key, LatLng at, const QString &lang)
 }
 
 QUrl HereUrls::route(const QString &key, const QString &mode, LatLng from, LatLng to,
-                     const QString &lang, const QString &units, int alternatives, int courseDegrees)
+                     const QString &lang, const QString &units, int alternatives, int courseDegrees,
+                     const QVector<LatLng> &vias, const QString &routingMode)
 {
     QUrlQuery q;
     q.addQueryItem(QStringLiteral("transportMode"), mode);
@@ -59,6 +64,12 @@ QUrl HereUrls::route(const QString &key, const QString &mode, LatLng from, LatLn
     q.addQueryItem(QStringLiteral("origin"), courseDegrees >= 0
                    ? coord(from) + QStringLiteral(";course=") + QString::number(courseDegrees)
                    : coord(from));
+    // passThrough: the route must go through the point but not stop there, so
+    // it takes the shortest way past it instead of detouring to "arrive".
+    for (const LatLng &v : vias)
+        q.addQueryItem(QStringLiteral("via"), coord(v) + QStringLiteral("!passThrough=true"));
+    if (!routingMode.isEmpty())
+        q.addQueryItem(QStringLiteral("routingMode"), routingMode);
     q.addQueryItem(QStringLiteral("destination"), coord(to));
     q.addQueryItem(QStringLiteral("return"), QStringLiteral("polyline,summary,actions,instructions,travelSummary"));
     if (alternatives > 0)
@@ -68,6 +79,45 @@ QUrl HereUrls::route(const QString &key, const QString &mode, LatLng from, LatLn
     q.addQueryItem(QStringLiteral("lang"), lang);
     q.addQueryItem(QStringLiteral("units"), units);
     return make(QStringLiteral("https://router.hereapi.com/v8/routes"), q, key);
+}
+
+QUrl HereUrls::valhallaBicycle(LatLng from, LatLng to, const QVector<LatLng> &vias, const QString &lang, const QString &units)
+{
+    auto loc = [](LatLng p, const char *type) {
+        QJsonObject o;
+        o[QStringLiteral("lat")] = p.lat;
+        o[QStringLiteral("lon")] = p.lng;
+        o[QStringLiteral("type")] = QString::fromLatin1(type);
+        return o;
+    };
+    QJsonArray locations{loc(from, "break")};
+    for (const LatLng &v : vias)
+        locations.append(loc(v, "through"));
+    locations.append(loc(to, "break"));
+
+    // use_roads low = prefer cycle paths and quiet streets over busy roads.
+    QJsonObject bike;
+    bike[QStringLiteral("bicycle_type")] = QStringLiteral("Hybrid");
+    bike[QStringLiteral("use_roads")] = 0.0;
+    bike[QStringLiteral("use_hills")] = 0.4;
+    bike[QStringLiteral("avoid_bad_surfaces")] = 0.5;
+    QJsonObject costing;
+    costing[QStringLiteral("bicycle")] = bike;
+    QJsonObject dir;
+    dir[QStringLiteral("units")] = units == QLatin1String("imperial") ? QStringLiteral("miles") : QStringLiteral("kilometers");
+    dir[QStringLiteral("language")] = lang;
+
+    QJsonObject req;
+    req[QStringLiteral("locations")] = locations;
+    req[QStringLiteral("costing")] = QStringLiteral("bicycle");
+    req[QStringLiteral("costing_options")] = costing;
+    req[QStringLiteral("directions_options")] = dir;
+
+    QUrl url(QStringLiteral("https://valhalla1.openstreetmap.de/route"));
+    QUrlQuery q;
+    q.addQueryItem(QStringLiteral("json"), QString::fromUtf8(QJsonDocument(req).toJson(QJsonDocument::Compact)));
+    url.setQuery(q);
+    return url;
 }
 
 QUrl HereUrls::transit(const QString &key, LatLng from, LatLng to, const QString &lang,

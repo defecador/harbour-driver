@@ -7,8 +7,40 @@ Item {
     signal openDetails()
     signal closed()
     signal editField(string field)
+    // The expanded card's map window, in window coordinates. AppRoot frames
+    // the (shared, full-screen) map so the route fits inside it.
+    signal previewFrame(real x, real y, real w, real h)
 
-    Rectangle { anchors.fill: parent; color: M.bg }
+    // Index of the card showing its route map, or -1.
+    property int previewIndex: -1
+    property Item holeItem: null
+
+    function emitFrame() {
+        if (previewIndex < 0 || !holeItem || holeItem.height < 40)
+            return
+        var p = holeItem.mapToItem(null, 0, 0)
+        previewFrame(p.x, p.y, holeItem.width, holeItem.height)
+    }
+
+    Timer { id: frameTimer; interval: 320; onTriggered: root.emitFrame() }
+    onPreviewIndexChanged: frameTimer.restart()
+    onHoleItemChanged: frameTimer.restart()
+
+    Connections {
+        target: TripPlanner
+        onSelectedModeChanged: root.previewIndex = -1
+        onResultsChanged: root.previewIndex = -1
+    }
+
+    Component.onCompleted: if (AppTools.devScreen === "plannerpreview") previewIndex = 0
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: header.height
+        color: M.bg
+    }
 
     Column {
         id: header
@@ -92,6 +124,7 @@ Item {
     }
 
     Item {
+        id: listArea
         anchors.top: header.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -99,6 +132,11 @@ Item {
 
         readonly property var list_: TripPlanner.results[TripPlanner.selectedMode] || []
         readonly property string status_: TripPlanner.status[TripPlanner.selectedMode] || ""
+
+        // Opaque backdrop for the loading/error states; when routes are
+        // listed every row paints its own background so the map can show
+        // through the preview window.
+        Rectangle { anchors.fill: parent; color: M.bg; visible: parent.status_ !== "ok" }
 
         Column {
             visible: parent.status_ === "loading"
@@ -124,41 +162,98 @@ Item {
             }
         }
 
-        ListView {
+        Flickable {
             id: routeList
             anchors.fill: parent
             clip: true
             visible: parent.status_ === "ok"
-            model: parent.list_
-            spacing: M.spacingM
-            topMargin: M.spacingM
-            bottomMargin: M.spacingM
-            delegate: Item {
-                id: delegateRoot
-                width: routeList.width
-                height: cardLoader.item ? cardLoader.item.height : 0
+            contentWidth: width
+            contentHeight: rows.height + filler.height
+            boundsBehavior: Flickable.StopAtBounds
+            onMovementEnded: root.emitFrame()
 
-                Loader {
-                    id: cardLoader
-                    width: parent.width
-                    sourceComponent: TripPlanner.selectedMode === "transit" ? transitCardComp : routeCardComp
-                    onLoaded: {
-                        item.itinerary = modelData
-                        item.selected = (index === TripPlanner.selectedIndex)
+            Column {
+                id: rows
+                width: routeList.width
+
+                Repeater {
+                    model: listArea.list_
+                    delegate: Item {
+                        id: delegateRoot
+                        readonly property bool expanded: root.previewIndex === index
+                        property real prog: expanded ? 1 : 0
+                        Behavior on prog { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                        readonly property real mapH: 240 * M.dp
+
+                        width: rows.width
+                        height: M.spacingM + (cardLoader.item ? cardLoader.item.height : 0) + (mapH + M.spacingM) * prog + M.spacingM
+
+                        // Background everywhere except the map window (hole).
+                        Rectangle { x: 0; y: 0; width: parent.width; height: hole.y; color: M.bg }
+                        Rectangle { x: 0; y: hole.y; width: hole.x; height: hole.height; color: M.bg }
+                        Rectangle { x: hole.x + hole.width; y: hole.y; width: parent.width - x; height: hole.height; color: M.bg }
+                        Rectangle { x: 0; y: hole.y + hole.height; width: parent.width; height: parent.height - y; color: M.bg }
+
+                        Loader {
+                            id: cardLoader
+                            x: M.spacingM
+                            y: M.spacingM
+                            width: parent.width - M.spacingM * 2
+                            sourceComponent: TripPlanner.selectedMode === "transit" ? transitCardComp : routeCardComp
+                            onLoaded: {
+                                item.itinerary = modelData
+                                item.selected = (index === TripPlanner.selectedIndex)
+                            }
+                        }
+
+                        // The map shows through here (see previewFrame).
+                        Item {
+                            id: hole
+                            x: M.spacingM
+                            y: M.spacingM + (cardLoader.item ? cardLoader.item.height : 0) + M.spacingM
+                            width: parent.width - M.spacingM * 2
+                            height: delegateRoot.mapH * delegateRoot.prog
+                            visible: delegateRoot.prog > 0.01
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: M.radiusCard
+                                color: "transparent"
+                                border.width: 2 * M.dp
+                                border.color: M.primary
+                            }
+                        }
+
+                        Binding { target: root; property: "holeItem"; value: hole; when: delegateRoot.expanded }
+
+                        Connections {
+                            target: TripPlanner
+                            onSelectionChanged: if (cardLoader.item) cardLoader.item.selected = (index === TripPlanner.selectedIndex)
+                        }
+
+                        Connections {
+                            target: cardLoader.item
+                            ignoreUnknownSignals: true
+                            onClicked: {
+                                if (index === TripPlanner.selectedIndex)
+                                    root.previewIndex = delegateRoot.expanded ? -1 : index
+                                else {
+                                    TripPlanner.selectedIndex = index
+                                    root.previewIndex = index
+                                }
+                            }
+                            onGoClicked: root.openDetails()
+                        }
                     }
                 }
+            }
 
-                Connections {
-                    target: TripPlanner
-                    onSelectionChanged: if (cardLoader.item) cardLoader.item.selected = (index === TripPlanner.selectedIndex)
-                }
-
-                Connections {
-                    target: cardLoader.item
-                    ignoreUnknownSignals: true
-                    onClicked: TripPlanner.selectedIndex = index
-                    onGoClicked: root.openDetails()
-                }
+            // Fills the rest of the screen below the last row.
+            Rectangle {
+                id: filler
+                y: rows.height
+                width: routeList.width
+                height: Math.max(0, routeList.height - rows.height)
+                color: M.bg
             }
         }
     }

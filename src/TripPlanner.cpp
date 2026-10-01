@@ -85,6 +85,10 @@ void TripPlanner::plan()
 
 void TripPlanner::request(const QString &mode)
 {
+    if (mode == QLatin1String("bicycle")) {
+        requestBicycle();
+        return;
+    }
     const int gen = m_generation;
     const QString key = m_settings->hereApiKey();
     const QString lang = m_settings->lang();
@@ -108,6 +112,81 @@ void TripPlanner::request(const QString &mode)
                                                    : ItineraryParser::parseRoutes(json, mode);
         finish(mode, ok, items, err);
     }));
+}
+
+// Cycling offers three routes: fastest and shortest from HERE, greenest from
+// Valhalla (OpenStreetMap), which can prefer bike paths and quiet streets.
+// They arrive independently and the list fills in as they do.
+void TripPlanner::requestBicycle()
+{
+    const int gen = m_generation;
+    const QString key = m_settings->hereApiKey();
+    const QString lang = m_settings->lang();
+    const QString units = m_settings->units();
+    const auto from = navPoint(m_from), to = navPoint(m_to);
+    m_bikeParts.clear();
+    m_bikeError.clear();
+    m_bikeOutstanding = 3;
+
+    struct Variant { const char *name; QUrl url; const char *fixture; bool valhalla; };
+    const QVector<Variant> variants = {
+        {"fast", HereUrls::route(key, QStringLiteral("bicycle"), from, to, lang, units, 0, -1, {}, QStringLiteral("fast")),
+         "route_bicycle", false},
+        {"short", HereUrls::route(key, QStringLiteral("bicycle"), from, to, lang, units, 0, -1, {}, QStringLiteral("short")),
+         "route_bicycle_short", false},
+        {"green", HereUrls::valhallaBicycle(from, to, {}, lang, units), "route_bicycle_green", true},
+    };
+    for (const Variant &v : variants) {
+        const QString name = QString::fromLatin1(v.name);
+        const bool valhalla = v.valhalla;
+        m_pending.append(m_client->get(v.url, QString::fromLatin1(v.fixture),
+                [this, gen, name, valhalla](bool ok, const QJsonObject &json, const QString &err) {
+            if (gen != m_generation)
+                return;
+            QVariantList items;
+            if (ok) {
+                items = valhalla ? ItineraryParser::parseValhalla(json, QStringLiteral("bicycle"))
+                                 : ItineraryParser::parseRoutes(json, QStringLiteral("bicycle"));
+            }
+            bicyclePartDone(gen, name, ok, items, err);
+        }));
+    }
+}
+
+void TripPlanner::bicyclePartDone(int gen, const QString &variant, bool ok, const QVariantList &items, const QString &error)
+{
+    if (gen != m_generation)
+        return;
+    --m_bikeOutstanding;
+    if (ok && !items.isEmpty()) {
+        QVariantMap it = items.first().toMap();
+        it[QStringLiteral("variant")] = variant;
+        m_bikeParts[variant] = it;
+    } else if (m_bikeError.isEmpty()) {
+        m_bikeError = error;
+    }
+
+    // Fixed order: fastest first (the mode tab shows its time), then shortest, then greenest.
+    QVariantList list;
+    for (const QString &v : {QStringLiteral("fast"), QStringLiteral("short"), QStringLiteral("green")}) {
+        if (!m_bikeParts.contains(v))
+            continue;
+        const QVariantMap it = m_bikeParts.value(v);
+        // Skip a route identical to one already listed.
+        bool duplicate = false;
+        for (const QVariant &e : list) {
+            const QVariantMap o = e.toMap();
+            duplicate = duplicate || (o.value(QStringLiteral("length")) == it.value(QStringLiteral("length"))
+                                      && o.value(QStringLiteral("duration")) == it.value(QStringLiteral("duration")));
+        }
+        if (!duplicate)
+            list.append(it);
+    }
+
+    if (!list.isEmpty())
+        finish(QStringLiteral("bicycle"), true, list, QString());
+    else if (m_bikeOutstanding == 0)
+        finish(QStringLiteral("bicycle"), false, QVariantList(), m_bikeError);
 }
 
 void TripPlanner::finish(const QString &mode, bool ok, const QVariantList &items, const QString &error)

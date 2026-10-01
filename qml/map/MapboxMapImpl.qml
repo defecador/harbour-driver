@@ -25,6 +25,45 @@ Item {
     function fitCoordinates(coords, preserve) { if (coords && coords.length > 0) map.fitView(coords, preserve === true) }
     function stopFit() { map.stopFitView() }
 
+    // Frames the coordinates inside a rectangle of the window (rx, ry, rw, rh
+    // in this item's pixels) — used by the route-preview window, which sits
+    // over only part of the screen. Plain web-mercator math instead of
+    // setMargins(), which misbehaved on the device.
+    function fitInRect(coords, rx, ry, rw, rh) {
+        if (!coords || coords.length === 0 || rw < 20 || rh < 20)
+            return
+        var minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
+        for (var i = 0; i < coords.length; i++) {
+            var la = coords[i].latitude, lo = coords[i].longitude
+            if (la < minLat) minLat = la
+            if (la > maxLat) maxLat = la
+            if (lo < minLng) minLng = lo
+            if (lo > maxLng) maxLng = lo
+        }
+        function wx(lng) { return (lng + 180) / 360 }
+        function wy(lat) { var s = Math.sin(lat * Math.PI / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) }
+        var x0 = wx(minLng), x1 = wx(maxLng), y0 = wy(maxLat), y1 = wy(minLat)
+        var dx = Math.max(x1 - x0, 1e-7), dy = Math.max(y1 - y0, 1e-7)
+        var pad = 0.12 * Math.min(rw, rh)
+        var tile = 512 * root._mapScale
+        var z = Math.log(Math.min((rw - 2 * pad) / (dx * tile), (rh - 2 * pad) / (dy * tile))) / Math.LN2
+        z = Math.max(3, Math.min(18, z))
+        var scale = tile * Math.pow(2, z)
+        var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2
+        var shiftX = (rx + rw / 2) - map.width / 2
+        var shiftY = (ry + rh / 2) - map.height / 2
+        var mx = cx - shiftX / scale, my = cy - shiftY / scale
+        var lng = mx * 360 - 180
+        var lat = (2 * Math.atan(Math.exp(Math.PI * (1 - 2 * my))) - Math.PI / 2) * 180 / Math.PI
+        map.stopFitView()
+        map.bearing = 0
+        map.pitch = 0
+        map.zoomLevel = z
+        map.center = QtPositioning.coordinate(lat, lng)
+    }
+    // Item pixels per mapbox "512 tile" pixel; calibrated on the device.
+    property real _mapScale: 1.0
+
     // --- Navigation follow mode ---------------------------------------
     // Car tilts and rotates to heading; walk/bike stay flat and north-up.
     property bool _following: false

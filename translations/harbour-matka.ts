@@ -46,6 +46,10 @@
         <source>Your location</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Dropped pin</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>CoverPage</name>
@@ -266,6 +270,18 @@
         <source>Leg %1 of %2 · </source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Add this place as a stop?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Via %1 · </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>stop</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Navigator</name>
@@ -295,6 +311,26 @@
     </message>
     <message>
         <source>Missed %1? Find the next connection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop reached</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop reached: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t add the stop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop added</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -355,6 +391,18 @@
     </message>
     <message>
         <source>arrive </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Greenest</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shortest</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fastest</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

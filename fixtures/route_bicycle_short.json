@@ -1,0 +1,64 @@
+{
+  "routes": [
+    {
+      "id": "bike-route-1",
+      "sections": [
+        {
+          "type": "bicycle",
+          "polyline": "BF-kygKg77xCnDvV9e7qGAA",
+          "departure": {
+            "time": "2026-09-28T10:00:00+02:00",
+            "place": {
+              "name": "Alexanderplatz",
+              "location": {
+                "lat": 52.52175,
+                "lng": 13.4136
+              }
+            }
+          },
+          "arrival": {
+            "time": "2026-09-28T10:15:00+02:00",
+            "place": {
+              "name": "Brandenburg Gate",
+              "location": {
+                "lat": 52.51628,
+                "lng": 13.3777
+              }
+            }
+          },
+          "summary": {
+            "duration": 954,
+            "baseDuration": 954,
+            "length": 3680
+          },
+          "actions": [
+            {
+              "action": "depart",
+              "direction": "",
+              "instruction": "Head west on Karl-Liebknecht-Stra\u00dfe",
+              "length": 350,
+              "duration": 80,
+              "offset": 0
+            },
+            {
+              "action": "turn",
+              "direction": "slightLeft",
+              "instruction": "Keep left onto Unter den Linden",
+              "length": 3300,
+              "duration": 700,
+              "offset": 1
+            },
+            {
+              "action": "arrive",
+              "direction": "",
+              "instruction": "Arrive at Brandenburg Gate",
+              "length": 0,
+              "duration": 0,
+              "offset": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

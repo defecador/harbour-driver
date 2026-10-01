@@ -79,6 +79,128 @@ QVariantList parseActions(const QJsonArray &arr, int baseOffset = 0)
     return out;
 }
 
+
+// Google-style encoded polyline with 6 decimal places (Valhalla's shape format).
+QVariantList decodePolyline6(const QString &enc)
+{
+    QVariantList out;
+    int index = 0, lat = 0, lng = 0;
+    const int n = enc.size();
+    auto next = [&](int &acc) {
+        int shift = 0, result = 0, b;
+        do {
+            if (index >= n)
+                return false;
+            b = enc.at(index++).unicode() - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        acc += (result & 1) ? ~(result >> 1) : (result >> 1);
+        return true;
+    };
+    while (index < n) {
+        if (!next(lat) || !next(lng))
+            break;
+        out.append(QVariant::fromValue(QGeoCoordinate(lat / 1e6, lng / 1e6)));
+    }
+    return out;
+}
+
+// Valhalla maneuver type -> HERE-style action/direction, which the UI icons use.
+void valhallaAction(int type, QString &action, QString &direction)
+{
+    direction.clear();
+    switch (type) {
+    case 1: case 2: case 3: action = QStringLiteral("depart"); break;
+    case 4: case 5: case 6: action = QStringLiteral("arrive"); break;
+    case 9: action = QStringLiteral("turn"); direction = QStringLiteral("slightRight"); break;
+    case 10: action = QStringLiteral("turn"); direction = QStringLiteral("right"); break;
+    case 11: action = QStringLiteral("turn"); direction = QStringLiteral("sharpRight"); break;
+    case 12: case 13: action = QStringLiteral("uTurn"); break;
+    case 14: action = QStringLiteral("turn"); direction = QStringLiteral("sharpLeft"); break;
+    case 15: action = QStringLiteral("turn"); direction = QStringLiteral("left"); break;
+    case 16: action = QStringLiteral("turn"); direction = QStringLiteral("slightLeft"); break;
+    case 17: case 18: case 19: action = QStringLiteral("rampProceed"); break;
+    case 20: action = QStringLiteral("exit"); direction = QStringLiteral("right"); break;
+    case 21: action = QStringLiteral("exit"); direction = QStringLiteral("left"); break;
+    case 23: action = QStringLiteral("fork"); direction = QStringLiteral("right"); break;
+    case 24: action = QStringLiteral("fork"); direction = QStringLiteral("left"); break;
+    case 26: action = QStringLiteral("roundaboutEnter"); break;
+    case 27: action = QStringLiteral("roundaboutExit"); break;
+    default: action = QStringLiteral("continue"); break;
+    }
+}
+
+}
+
+QVariantList ItineraryParser::parseValhalla(const QJsonObject &root, const QString &mode)
+{
+    const QJsonObject trip = root.value(QStringLiteral("trip")).toObject();
+    const QJsonArray legsJson = trip.value(QStringLiteral("legs")).toArray();
+    if (trip.value(QStringLiteral("status")).toInt(-1) != 0 || legsJson.isEmpty())
+        return QVariantList();
+
+    QVariantList coords, actions;
+    int pointOffset = 0;
+    for (const auto &lv : legsJson) {
+        const QJsonObject lj = lv.toObject();
+        QVariantList c = decodePolyline6(lj.value(QStringLiteral("shape")).toString());
+        // Consecutive legs share their joint point: keep it once.
+        const int skip = coords.isEmpty() ? 0 : 1;
+        if (skip && !c.isEmpty())
+            c.removeFirst();
+        for (const auto &mv : lj.value(QStringLiteral("maneuvers")).toArray()) {
+            const QJsonObject m = mv.toObject();
+            QVariantMap a;
+            QString action, direction;
+            valhallaAction(m.value(QStringLiteral("type")).toInt(), action, direction);
+            a[QStringLiteral("action")] = action;
+            a[QStringLiteral("direction")] = direction;
+            a[QStringLiteral("instruction")] = m.value(QStringLiteral("instruction")).toString();
+            a[QStringLiteral("length")] = int(m.value(QStringLiteral("length")).toDouble() * 1000.0 + 0.5);
+            a[QStringLiteral("duration")] = int(m.value(QStringLiteral("time")).toDouble() + 0.5);
+            const int begin = qMax(0, m.value(QStringLiteral("begin_shape_index")).toInt() - skip);
+            a[QStringLiteral("offset")] = pointOffset + begin;
+            actions.append(a);
+        }
+        coords.append(c);
+        pointOffset += c.size();
+    }
+
+    const QJsonObject sum = trip.value(QStringLiteral("summary")).toObject();
+    const int duration = int(sum.value(QStringLiteral("time")).toDouble() + 0.5);
+    const int length = int(sum.value(QStringLiteral("length")).toDouble() * 1000.0 + 0.5);
+    const QDateTime depart = QDateTime::currentDateTime();
+    const QString dep = depart.toString(Qt::ISODate);
+    const QString arr = depart.addSecs(duration).toString(Qt::ISODate);
+
+    QVariantMap leg;
+    leg[QStringLiteral("type")] = mode;
+    leg[QStringLiteral("duration")] = duration;
+    leg[QStringLiteral("length")] = length;
+    leg[QStringLiteral("coordinates")] = coords;
+    leg[QStringLiteral("actions")] = actions;
+
+    QVariantMap attribution;
+    attribution[QStringLiteral("text")] = QStringLiteral("Routing: Valhalla (FOSSGIS) · Map data © OpenStreetMap contributors");
+
+    QVariantMap it;
+    it[QStringLiteral("mode")] = mode;
+    it[QStringLiteral("duration")] = duration;
+    it[QStringLiteral("baseDuration")] = duration;
+    it[QStringLiteral("trafficDelay")] = 0;
+    it[QStringLiteral("length")] = length;
+    it[QStringLiteral("departureTime")] = dep;
+    it[QStringLiteral("arrivalTime")] = arr;
+    it[QStringLiteral("departureText")] = timeText(dep);
+    it[QStringLiteral("arrivalText")] = timeText(arr);
+    it[QStringLiteral("transfers")] = 0;
+    it[QStringLiteral("walkDuration")] = 0;
+    it[QStringLiteral("coordinates")] = coords;
+    it[QStringLiteral("legs")] = QVariantList{leg};
+    it[QStringLiteral("actions")] = actions;
+    it[QStringLiteral("attributions")] = QVariantList{attribution};
+    return QVariantList{it};
 }
 
 QString ItineraryParser::timeText(const QString &iso)
@@ -277,5 +399,7 @@ QString ItineraryParser::errorMessage(const QJsonObject &root)
         msg += (msg.isEmpty() ? QString() : QStringLiteral(": ")) + cause;
     if (msg.isEmpty())
         msg = root.value(QStringLiteral("error_description")).toString();
+    if (msg.isEmpty())
+        msg = root.value(QStringLiteral("error")).toString();   // Valhalla
     return msg;
 }

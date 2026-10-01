@@ -20,6 +20,8 @@ constexpr qint64 kRerouteCooldownMs = 30000;
 constexpr int kRerouteMaxCount = 15;
 // Within this radius of the final maneuver, the trip counts as arrived.
 constexpr qreal kArrivalRadius = 30.0;
+// Within this radius of a user-added stop, the stop counts as reached.
+constexpr qreal kStopReachedRadius = 30.0;
 // Two maneuvers closer together than this both show on screen at once
 // ("then turn right"), so you don't miss a quick turn right after another.
 constexpr qreal kThenPreviewGap = 150.0;
@@ -99,6 +101,7 @@ void Navigator::rebuildFromItinerary(const QVariantMap &itinerary)
 {
     m_itinerary = itinerary;
     m_mode = itinerary.value(QStringLiteral("mode")).toString();
+    m_variant = itinerary.value(QStringLiteral("variant")).toString();
 
     m_coords.clear();
     m_cumDist.clear();
@@ -138,6 +141,19 @@ void Navigator::rebuildFromItinerary(const QVariantMap &itinerary)
         m_maneuvers.append(m);
     }
 
+    // A route through user stops has one "arrive" per stop before the final
+    // one; remember where, and name them after the stop instead of HERE's
+    // generic "arrive" text.
+    m_stopManeuvers.clear();
+    for (int i = 0; i + 1 < m_maneuvers.size() && m_stopManeuvers.size() < m_stops.size(); ++i) {
+        if (m_maneuvers[i].action == QStringLiteral("arrive")) {
+            const QString title = m_stops.at(m_stopManeuvers.size()).value(QStringLiteral("title")).toString();
+            if (!title.isEmpty())
+                m_maneuvers[i].instruction = tr("Stop: %1").arg(title);
+            m_stopManeuvers.append(i);
+        }
+    }
+
     resetProgressState();
 }
 
@@ -161,6 +177,12 @@ void Navigator::resetProgressState()
 void Navigator::start(const QVariantMap &itinerary, const QVariantMap &destination)
 {
     m_destination = destination;
+    if (!m_stops.isEmpty()) {
+        m_stops.clear();
+        emit stopsChanged();
+    }
+    m_stopManeuvers.clear();
+    m_addingStop = false;
     ++m_rerouteGeneration;
     ++m_transitRefreshGeneration;
     m_rerouteCount = 0;
@@ -198,6 +220,82 @@ void Navigator::advanceStepPointer()
 {
     while (m_stepIndex < m_maneuvers.size() - 1 && m_traveled >= m_maneuvers[m_stepIndex].distanceAlong)
         ++m_stepIndex;
+}
+
+void Navigator::checkStopsReached(double lat, double lng)
+{
+    // A stop is reached by passing its arrival maneuver, or just by walking
+    // up to it (routes through "pass-through" stops have no such maneuver).
+    while (!m_stops.isEmpty()
+           && (m_stopManeuvers.isEmpty() || m_stepIndex <= m_stopManeuvers.first())
+           && m_stops.first().contains(QStringLiteral("lat"))
+           && NavGeo::metersBetween(lat, lng, m_stops.first().value(QStringLiteral("lat")).toDouble(),
+                                    m_stops.first().value(QStringLiteral("lng")).toDouble()) <= kStopReachedRadius) {
+        const QString title = m_stops.first().value(QStringLiteral("title")).toString();
+        if (!m_stopManeuvers.isEmpty())
+            m_stopManeuvers.removeFirst();
+        m_stops.removeFirst();
+        emit announce(title.isEmpty() ? tr("Stop reached") : tr("Stop reached: %1").arg(title),
+                      QStringLiteral("stopReached"));
+        emit stopsChanged();
+    }
+    bool changed = false;
+    while (!m_stopManeuvers.isEmpty() && m_stepIndex > m_stopManeuvers.first()) {
+        const QString title = m_stops.isEmpty() ? QString() : m_stops.first().value(QStringLiteral("title")).toString();
+        m_stopManeuvers.removeFirst();
+        if (!m_stops.isEmpty())
+            m_stops.removeFirst();
+        emit announce(title.isEmpty() ? tr("Stop reached") : tr("Stop reached: %1").arg(title),
+                      QStringLiteral("stopReached"));
+        changed = true;
+    }
+    if (changed)
+        emit stopsChanged();
+}
+
+QVariantList Navigator::stops() const
+{
+    QVariantList out;
+    for (const QVariantMap &m : m_stops)
+        out.append(m);
+    return out;
+}
+
+void Navigator::addStop(const QVariantMap &place)
+{
+    if ((m_mode != QStringLiteral("pedestrian") && m_mode != QStringLiteral("bicycle"))
+            || m_state != QStringLiteral("guiding") || m_rerouting)
+        return;
+    // Insert where it adds the least walking (straight-line estimate) to the
+    // trip: current position -> stops -> destination.
+    auto pt = [](const QVariantMap &m) {
+        return qMakePair(m.value(QStringLiteral("navLat"), m.value(QStringLiteral("lat"))).toDouble(),
+                         m.value(QStringLiteral("navLng"), m.value(QStringLiteral("lng"))).toDouble());
+    };
+    int bestIndex = 0;
+    qreal bestLen = -1;
+    for (int at = 0; at <= m_stops.size(); ++at) {
+        QVector<QPair<double, double>> path{qMakePair(m_lastLat, m_lastLng)};
+        for (int i = 0; i <= m_stops.size(); ++i) {
+            if (i == at)
+                path.append(pt(place));
+            if (i < m_stops.size())
+                path.append(pt(m_stops.at(i)));
+        }
+        path.append(pt(m_destination));
+        qreal len = 0;
+        for (int i = 1; i < path.size(); ++i)
+            len += NavGeo::metersBetween(path[i - 1].first, path[i - 1].second, path[i].first, path[i].second);
+        if (bestLen < 0 || len < bestLen) {
+            bestLen = len;
+            bestIndex = at;
+        }
+    }
+    m_addedStopIndex = bestIndex;
+    m_stops.insert(bestIndex, place);
+    m_addingStop = true;
+    emit stopsChanged();
+    maybeReroute(m_lastLat, m_lastLng, m_lastHeading, now(), /*manual=*/true);
 }
 
 void Navigator::updateDerivedProperties()
@@ -344,6 +442,7 @@ void Navigator::updatePosition(double lat, double lng, double accuracyM,
 
     const qreal bestPerp = matchPositionToRoute(lat, lng);
     advanceStepPointer();
+    checkStopsReached(lat, lng);
     updateDerivedProperties();
 
     if (m_state == QStringLiteral("waitingForGps")) {
@@ -388,11 +487,13 @@ void Navigator::maybeReroute(double lat, double lng, double headingDeg, qint64 t
         // Test-only Navigators built without real collaborators: the spy
         // above already observed the attempt, nothing else to do.
         m_rerouting = false;
+        dropFailedStop();
         emit stateChanged();
         return;
     }
     if (!m_client->fixtureMode() && !m_settings->hasHereKey()) {
         m_rerouting = false;
+        dropFailedStop();
         emit stateChanged();
         return;
     }
@@ -404,12 +505,31 @@ void Navigator::maybeReroute(double lat, double lng, double headingDeg, qint64 t
         m_destination.value(QStringLiteral("navLng"), m_destination.value(QStringLiteral("lng"))).toDouble()
     };
     const QString mode = m_mode;
-    const QUrl url = HereUrls::route(m_settings->hereApiKey(), mode, from, to,
-                                     m_settings->lang(), m_settings->units(), 0, courseArg);
-    m_client->get(url, QStringLiteral("route_") + mode, [this, gen, mode](bool ok, const QJsonObject &json, const QString &) {
+    QVector<HereUrls::LatLng> vias;
+    for (const QVariantMap &stop : m_stops) {
+        vias.append({stop.value(QStringLiteral("navLat"), stop.value(QStringLiteral("lat"))).toDouble(),
+                     stop.value(QStringLiteral("navLng"), stop.value(QStringLiteral("lng"))).toDouble()});
+    }
+    const QString variant = m_variant;
+    const bool valhalla = mode == QStringLiteral("bicycle") && variant == QStringLiteral("green");
+    const QUrl url = valhalla
+            ? HereUrls::valhallaBicycle(from, to, vias, m_settings->lang(), m_settings->units())
+            : HereUrls::route(m_settings->hereApiKey(), mode, from, to, m_settings->lang(), m_settings->units(),
+                              0, courseArg, vias,
+                              mode == QStringLiteral("bicycle") && variant == QStringLiteral("short")
+                                      ? QStringLiteral("short") : QString());
+    const QString fixture = mode == QStringLiteral("bicycle") && !variant.isEmpty() && variant != QStringLiteral("fast")
+            ? QStringLiteral("route_bicycle_") + variant : QStringLiteral("route_") + mode;
+    m_client->get(url, fixture, [this, gen, mode, variant, valhalla](bool ok, const QJsonObject &json, const QString &) {
         if (gen != m_rerouteGeneration)
             return;
-        const QVariantList items = ok ? ItineraryParser::parseRoutes(json, mode) : QVariantList();
+        QVariantList items = !ok ? QVariantList()
+                : valhalla ? ItineraryParser::parseValhalla(json, mode) : ItineraryParser::parseRoutes(json, mode);
+        if (!items.isEmpty()) {
+            QVariantMap first = items.first().toMap();
+            first[QStringLiteral("variant")] = variant;
+            items[0] = first;
+        }
         applyRerouteResult(ok && !items.isEmpty(), items);
     });
 }
@@ -421,14 +541,30 @@ void Navigator::retryReroute()
     maybeReroute(m_lastLat, m_lastLng, m_lastHeading, now(), /*manual=*/true);
 }
 
+void Navigator::dropFailedStop()
+{
+    if (!m_addingStop)
+        return;
+    m_addingStop = false;
+    if (m_addedStopIndex >= 0 && m_addedStopIndex < m_stops.size())
+        m_stops.removeAt(m_addedStopIndex);
+    emit stopsChanged();
+    emit announce(tr("Couldn't add the stop"), QStringLiteral("stopFailed"));
+}
+
 void Navigator::applyRerouteResult(bool ok, const QVariantList &items)
 {
     m_rerouting = false;
+    if (!ok)
+        dropFailedStop();
     if (ok) {
         const QVariantMap newItinerary = items.first().toMap();
+        const bool addedStop = m_addingStop;
+        m_addingStop = false;
         rebuildFromItinerary(newItinerary);
         m_state = QStringLiteral("guiding");
-        emit announce(tr("Route updated"), QStringLiteral("rerouted"));
+        emit announce(addedStop ? tr("Stop added") : tr("Route updated"),
+                      addedStop ? QStringLiteral("stopAdded") : QStringLiteral("rerouted"));
         emit rerouted(newItinerary);
         emit maneuverChanged();
     }

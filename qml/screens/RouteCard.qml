@@ -37,6 +37,16 @@ Card {
             width: parent.width - 56 * M.dp - M.spacingM
             spacing: 2 * M.dp
 
+            // Cycling offers three routes; say which one this is.
+            MText {
+                visible: !!root.itinerary.variant
+                variant: "caption"
+                color: root.itinerary.variant === "green" ? M.good : M.primary
+                text: root.itinerary.variant === "green" ? qsTr("Greenest")
+                      : root.itinerary.variant === "short" ? qsTr("Shortest")
+                      : root.itinerary.variant === "fast" ? qsTr("Fastest") : ""
+            }
+
             Row {
                 spacing: M.spacingXs
                 MText {

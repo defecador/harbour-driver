@@ -22,6 +22,11 @@ Item {
 
     property bool simulate: false
     property bool following: true
+    // Place the user tapped on the map to maybe add as a stop (walk/bike
+    // only); AppRoot fills it in and listens for the two signals below.
+    property var stopCandidate: null
+    signal addStopRequested()
+    signal stopCandidateDismissed()
     // Camera-distance slider for the pitched driving view (zoom level:
     // higher = closer). AppRoot supplies povControls and listens for changes.
     property bool povControls: false
@@ -394,6 +399,61 @@ Item {
         }
     }
 
+    // "Add this place as a stop?" card, shown after tapping the map while
+    // walking or cycling.
+    Card {
+        id: stopCard
+        visible: root.stopCandidate !== null && Navigator.state === "guiding"
+                 && (Navigator.mode === "pedestrian" || Navigator.mode === "bicycle")
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: bottomBar.top
+        anchors.margins: M.spacingM
+        height: 88 * M.dp
+        radius: M.radiusCard
+
+        Icon { id: stopIcon; x: M.spacingM; anchors.verticalCenter: parent.verticalCenter; name: "place"; size: 26 * M.dp; color: M.bad }
+        Column {
+            anchors.left: stopIcon.right
+            anchors.leftMargin: M.spacingS
+            anchors.right: stopButtons.left
+            anchors.rightMargin: M.spacingS
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2 * M.dp
+            MText {
+                width: parent.width
+                elide: Text.ElideRight
+                variant: "subtitle"
+                text: root.stopCandidate ? (root.stopCandidate.title || "") : ""
+            }
+            MText {
+                width: parent.width
+                elide: Text.ElideRight
+                variant: "caption"
+                color: M.inkMuted
+                text: root.stopCandidate && root.stopCandidate.address ? root.stopCandidate.address : qsTr("Add this place as a stop?")
+            }
+        }
+        Row {
+            id: stopButtons
+            anchors.right: parent.right
+            anchors.rightMargin: M.spacingS
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: M.spacingXs
+            RoundIconButton {
+                iconName: "add"
+                bg: M.primary
+                iconColor: M.primaryInk
+                onClicked: root.addStopRequested()
+            }
+            RoundIconButton {
+                iconName: "close"
+                elevation: 0
+                onClicked: root.stopCandidateDismissed()
+            }
+        }
+    }
+
     // --- Bottom bar -----------------------------------------------------
     Card {
         id: bottomBar
@@ -426,6 +486,7 @@ Item {
                     variant: "caption"
                     color: M.inkMuted
                     text: (Navigator.mode === "transit" ? qsTr("Leg %1 of %2 · ").arg(Navigator.legIndex + 1).arg(Navigator.legCount) : "")
+                          + (Navigator.stopCount > 0 ? qsTr("Via %1 · ").arg(Navigator.stops[0].title || qsTr("stop")) : "")
                           + qsTr("Arrive ") + Navigator.arrivalText
                 }
             }

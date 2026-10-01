@@ -16,6 +16,8 @@
 namespace ItineraryParser {
 
 QVariantList parseRoutes(const QJsonObject &root, const QString &mode);
+// Valhalla (OpenStreetMap) /route response -> the same itinerary shape (one result).
+QVariantList parseValhalla(const QJsonObject &root, const QString &mode);
 QVariantList parseTransit(const QJsonObject &root);
 QVariantList parsePlaces(const QJsonObject &root);   // autosuggest / discover / revgeocode
 QString errorMessage(const QJsonObject &root);

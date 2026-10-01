@@ -74,6 +74,10 @@ class Navigator : public QObject
     Q_PROPERTY(QString nextStopName READ nextStopName NOTIFY transitChanged)
     Q_PROPERTY(bool missedConnection READ missedConnection NOTIFY transitChanged)
     Q_PROPERTY(bool hurry READ hurry NOTIFY transitChanged)
+    // Walk/bike only: stops the user added along the way, nearest first. Each
+    // is a place map (title, lat, lng, ...).
+    Q_PROPERTY(QVariantList stops READ stops NOTIFY stopsChanged)
+    Q_PROPERTY(int stopCount READ stopCount NOTIFY stopsChanged)
 
 public:
     Navigator(AppSettings *settings, HereClient *client, QObject *parent = nullptr);
@@ -130,6 +134,13 @@ public:
     // since it's only ever user-triggered (the "Find next connection" button).
     Q_INVOKABLE void replanTransit();
 
+    // Walk/bike only: adds `place` as the next stop and reroutes through it
+    // from the current position (one routing request). Does nothing in other
+    // modes or while not guiding. On failure the stop is dropped again.
+    Q_INVOKABLE void addStop(const QVariantMap &place);
+    QVariantList stops() const;
+    int stopCount() const { return m_stops.size(); }
+
     // Test/dev seam: when `on`, now() maps real elapsed wall-clock time (sped
     // up by `speedFactor`) onto the itinerary's own first-leg departure time,
     // so a fixture trip whose timestamps are in the past (or far in the
@@ -160,8 +171,9 @@ signals:
     void stateChanged();
     void maneuverChanged();
     void transitChanged();
+    void stopsChanged();
     // kind: "far" | "near" | "now" | "offroute" | "rerouting" | "rerouted" | "arrived"
-    // | "alight" | "alightNow" | "missed" | "boarded"
+    // | "alight" | "alightNow" | "missed" | "boarded" | "stopAdded" | "stopFailed" | "stopReached"
     void announce(const QString &text, const QString &kind);
     void arrived();
     void rerouted(const QVariantMap &newItinerary);
@@ -179,6 +191,8 @@ private:
     void resetProgressState();
     qint64 now() const;
     void advanceStepPointer();
+    void checkStopsReached(double lat, double lng);
+    void dropFailedStop();
     void updateDerivedProperties();
     void checkAnnouncements(qint64 tsMs);
     void checkOffRoute(qreal perpDistance, qint64 tsMs);
@@ -257,6 +271,11 @@ private:
     QString m_mode;
     QVariantMap m_destination;
     QVariantMap m_itinerary;
+    QVector<QVariantMap> m_stops;       // pending user stops, in visiting order
+    QString m_variant;                  // bicycle: "fast" | "short" | "green" (route flavour to keep on reroutes)
+    QVector<int> m_stopManeuvers;       // maneuver index of each pending stop's arrival
+    int m_addedStopIndex = 0;           // where the stop being added sits in m_stops
+    bool m_addingStop = false;          // the reroute in flight is for a newly added stop
 
     QVector<QPair<double, double>> m_coords;   // lat,lng
     QVector<qreal> m_cumDist;                  // cumulative metres per point, same size as m_coords

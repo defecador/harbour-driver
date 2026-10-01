@@ -70,6 +70,10 @@ Item {
                 mapView.clearRoutes()
                 mapView.clearPins()
             })
+            item.previewFrame.connect(function(x, y, w, h) {
+                var coords = TripPlanner.selected.coordinates || []
+                mapView.fitInRect(coords, x, y, w, h)
+            })
             item.editField.connect(function(field) {
                 var search = stack.push(Qt.resolvedUrl("screens/SearchScreen.qml"), {})
                 if (search) {
@@ -98,6 +102,12 @@ Item {
 
     property var navItem: null
     property int navTilt: 0
+    // The itinerary currently being followed (replaced when a reroute or a
+    // newly added stop produces a new one).
+    property var navItinerary: null
+    property var stopCandidate: null
+    property bool stopLookup: false
+    property int stopPinCount: 0
     // Distance of the driving camera, chosen with the slider; lasts for the
     // app session. 18.3 is the default street-level view.
     property real povZoom: 18.3
@@ -121,6 +131,7 @@ Item {
             TripPlanner.resultsChanged.connect(conn)
             return
         }
+        root.navItinerary = itin
         Navigator.start(itin, TripPlanner.to)
         if (itin.mode === "transit" && simulate)
             Navigator.setSimulationClock(true, 6.0)
@@ -143,13 +154,73 @@ Item {
                 root.povZoom = item.povZoom
                 mapView.setPovZoom(item.povZoom)
             })
+            item.addStopRequested.connect(function() {
+                if (root.stopCandidate)
+                    Navigator.addStop(root.stopCandidate)
+                root.clearStopCandidate()
+            })
+            item.stopCandidateDismissed.connect(function() { root.clearStopCandidate() })
             item.followToggled.connect(function(want) {
                 mapView.setFollowActive(want, root.navTilt)
             })
         }
     }
 
+    // Tapping (or long-pressing) the map while walking or cycling offers to
+    // add that spot as a stop. Returns true when the tap was used for that.
+    function mapTappedDuringNav(coordinate) {
+        if (!root.navItem || Navigator.state !== "guiding"
+                || (Navigator.mode !== "pedestrian" && Navigator.mode !== "bicycle"))
+            return false
+        var lat = coordinate.latitude, lng = coordinate.longitude
+        root.stopCandidate = {
+            "title": qsTr("Dropped pin"), "address": "",
+            "lat": lat, "lng": lng, "navLat": lat, "navLng": lng
+        }
+        mapView.removePin("stopcand")
+        mapView.showPin("stopcand", root.stopCandidate, "place")
+        root.navItem.stopCandidate = root.stopCandidate
+        root.stopLookup = true
+        SearchController.reverse(lat, lng)
+        return true
+    }
+
+    function clearStopCandidate() {
+        root.stopCandidate = null
+        root.stopLookup = false
+        mapView.removePin("stopcand")
+        if (root.navItem)
+            root.navItem.stopCandidate = null
+    }
+
+    function redrawStopPins() {
+        for (var i = 0; i < root.stopPinCount; i++)
+            mapView.removePin("stop" + i)
+        var stops = Navigator.stops
+        for (var j = 0; j < stops.length; j++)
+            mapView.showPin("stop" + j, stops[j], "place")
+        root.stopPinCount = stops.length
+    }
+
+    Connections {
+        target: Navigator
+        onStopsChanged: if (root.navItem) root.redrawStopPins()
+        onRerouted: {
+            if (!root.navItem)
+                return
+            root.navItinerary = newItinerary
+            mapView.clearRoutes()
+            mapView.showRoutes([newItinerary], 0)
+            root._lastOverlayFraction = -1
+        }
+    }
+
     function stopNavigation() {
+        root.clearStopCandidate()
+        for (var i = 0; i < root.stopPinCount; i++)
+            mapView.removePin("stop" + i)
+        root.stopPinCount = 0
+        root.navItinerary = null
         Navigator.stop()
         Navigator.setSimulationClock(false)
         mapView.stopFollowMode()
@@ -174,7 +245,7 @@ Item {
         if (!root.navItem || Navigator.mode === "transit")
             return
         var frac = Navigator.traveledFraction
-        var itin = TripPlanner.selected
+        var itin = root.navItinerary || TripPlanner.selected
         var coords = itin.coordinates || []
         if (coords.length < 2)
             return
@@ -210,7 +281,10 @@ Item {
     MapView {
         id: mapView
         anchors.fill: parent
+        onMapClicked: root.mapTappedDuringNav(coordinate)
         onMapLongPressed: {
+            if (root.mapTappedDuringNav(coordinate))
+                return
             var c = coordinate
             SearchController.reverse(c.latitude, c.longitude)
         }
@@ -219,6 +293,17 @@ Item {
     Connections {
         target: SearchController
         onReverseFinished: {
+            if (root.stopLookup) {
+                root.stopLookup = false
+                if (error.length === 0 && root.stopCandidate && root.navItem) {
+                    var c = root.stopCandidate
+                    c.title = place.title || c.title
+                    c.address = place.address || ""
+                    root.stopCandidate = c
+                    root.navItem.stopCandidate = c
+                }
+                return
+            }
             if (error.length === 0)
                 root.openPlaceCard(place)
         }
@@ -307,6 +392,12 @@ Item {
             root.openPlaceCard(root.devSamplePlace())
         } else if (name === "planner") {
             root.startPlanning(root.devSamplePlace())
+        } else if (name === "plannerpreview") {
+            root.startPlanning(root.devSamplePlace())
+            TripPlanner.selectedMode = "car"
+        } else if (name === "plannerbike") {
+            root.startPlanning(root.devSamplePlace())
+            TripPlanner.selectedMode = "bicycle"
         } else if (name === "routedetails") {
             root.startPlanning(root.devSamplePlace())
             TripPlanner.selectedMode = "car"
@@ -322,6 +413,12 @@ Item {
             root.startPlanning(root.devSamplePlace())
             TripPlanner.selectedMode = "car"
             root.startNavigation(true)
+        } else if (name === "navwalkstop") {
+            // Simulated walk with a tapped-map "add stop" candidate showing.
+            root.startPlanning(root.devSamplePlace())
+            TripPlanner.selectedMode = "pedestrian"
+            root.startNavigation(true)
+            devStopTap.start()
         } else if (name === "navtransit") {
             // Simulated transit navigation (walk -> wait -> ride -> alight
             // -> walk -> arrived) over the sample fixture trip.
@@ -338,6 +435,16 @@ Item {
             locateRetry.start()
         } else if (name === "osmtest") {
             mapView.debugSetStyle(AppTools.debugOsmStyleJson())
+        }
+    }
+
+    Timer {
+        id: devStopTap
+        interval: 2500
+        onTriggered: {
+            var coords = (root.navItinerary || {}).coordinates || []
+            if (coords.length > 2)
+                root.mapTappedDuringNav(coords[Math.floor(coords.length * 0.6)])
         }
     }
 
