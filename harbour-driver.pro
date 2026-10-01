@@ -5,7 +5,7 @@ TARGET = harbour-driver
 CONFIG += sailfishapp c++14
 QT += network positioning
 
-VERSION = 0.8.1
+VERSION = 0.8.2
 DEFINES += APP_VERSION=\\\"$${VERSION}\\\"
 
 SOURCES += \

@@ -51,6 +51,28 @@ Item {
                     text: qsTr("Driver is an independent, unofficial trip planner for Sailfish OS. Version %1.").arg(AppTools.appVersion)
                 }
 
+                MText { variant: "subtitle"; text: qsTr("Support") }
+                MText {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: M.inkMuted
+                    text: qsTr("If you like it, you can thank me with a coffee 🙂")
+                }
+                Item {
+                    width: coffeeLink.width
+                    height: coffeeLink.height + M.spacingS
+                    MText {
+                        id: coffeeLink
+                        color: M.primary
+                        font.underline: true
+                        text: "https://ko-fi.com/gallerman73107"
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: Qt.openUrlExternally("https://ko-fi.com/gallerman73107#linkModal")
+                    }
+                }
+
                 MText { variant: "subtitle"; text: qsTr("Data & maps") }
                 MText {
                     width: parent.width
@@ -62,7 +84,7 @@ Item {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     color: M.inkMuted
-                    text: qsTr("When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors.")
+                    text: qsTr("When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors. The 3D driving view uses OpenFreeMap vector tiles, and the greenest cycling route is calculated by Valhalla (FOSSGIS) from OpenStreetMap data © OpenStreetMap contributors.")
                 }
 
                 MText { variant: "subtitle"; text: qsTr("Fonts & icons") }

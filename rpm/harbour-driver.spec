@@ -1,7 +1,7 @@
 Name:       harbour-driver
 
 Summary:    Driver trip planner
-Version:    0.8.1
+Version:    0.8.2
 Release:    1
 License:    GPLv3
 URL:        https://example.org/harbour-driver

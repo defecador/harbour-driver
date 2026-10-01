@@ -20,10 +20,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Fonts &amp; icons</source>
         <translation type="unfinished"></translation>
     </message>
@@ -37,6 +33,18 @@
     </message>
     <message>
         <source>Driver is free software, released under the GNU General Public License v3.0.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>If you like it, you can thank me with a coffee 🙂</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors. The 3D driving view uses OpenFreeMap vector tiles, and the greenest cycling route is calculated by Valhalla (FOSSGIS) from OpenStreetMap data © OpenStreetMap contributors.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
