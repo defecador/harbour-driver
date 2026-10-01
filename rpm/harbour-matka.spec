@@ -1,7 +1,7 @@
 Name:       harbour-matka
 
 Summary:    Matka trip planner
-Version:    0.1.0
+Version:    0.8.0
 Release:    1
 License:    GPLv3
 URL:        https://example.org/harbour-matka

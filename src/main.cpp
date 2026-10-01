@@ -32,7 +32,7 @@
 #include "TripPlanner.h"
 
 #ifndef APP_VERSION
-#define APP_VERSION "0.1.0"
+#define APP_VERSION "0.8.0"
 #endif
 
 // Exposes small platform/dev-mode helpers to QML that don't belong on any single model.

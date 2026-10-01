@@ -5,7 +5,7 @@ TARGET = harbour-matka
 CONFIG += sailfishapp c++14
 QT += network positioning
 
-VERSION = 0.1.0
+VERSION = 0.8.0
 DEFINES += APP_VERSION=\\\"$${VERSION}\\\"
 
 SOURCES += \
