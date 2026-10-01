@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=harbour-matka
+Exec=harbour-matka
+Name=Matka
+
+[X-Sailjail]
+OrganizationName=org.matka
+ApplicationName=Matka
+Permissions=Internet;Location;Notifications

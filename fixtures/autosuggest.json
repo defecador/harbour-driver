@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "here:pds:place:276u33db-cd1f0aa50f0043678211fe0e15c9c0aa",
+      "title": "Brandenburg Gate",
+      "resultType": "place",
+      "address": { "label": "Brandenburg Gate, Pariser Platz, 10117 Berlin, Germany" },
+      "position": { "lat": 52.51628, "lng": 13.37770 },
+      "access": [ { "lat": 52.51637, "lng": 13.37770 } ],
+      "distance": 1240,
+      "categories": [ { "id": "300-3100-0000", "name": "Historical Monument", "primary": true } ]
+    },
+    {
+      "id": "here:pds:place:276u33db-1234",
+      "title": "Alexanderplatz",
+      "resultType": "place",
+      "address": { "label": "Alexanderplatz, 10178 Berlin, Germany" },
+      "position": { "lat": 52.52175, "lng": 13.41360 },
+      "distance": 720,
+      "categories": [ { "id": "600-6300-0066", "name": "Public Transport Stop", "primary": true } ]
+    },
+    {
+      "id": "here:cm:street:base",
+      "title": "Alexanderstraße",
+      "resultType": "street",
+      "address": { "label": "Alexanderstraße, 10178 Berlin, Germany" },
+      "position": { "lat": 52.52101, "lng": 13.41457 },
+      "distance": 950
+    },
+    {
+      "id": "here:pds:place:berlin-hbf",
+      "title": "Berlin Hauptbahnhof",
+      "resultType": "place",
+      "address": { "label": "Berlin Hauptbahnhof, Europaplatz 1, 10557 Berlin, Germany" },
+      "position": { "lat": 52.52504, "lng": 13.36934 },
+      "distance": 2560,
+      "categories": [ { "id": "400-4100-0044", "name": "Train Station", "primary": true } ]
+    }
+  ]
+}

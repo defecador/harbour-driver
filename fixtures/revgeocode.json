@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "here:cm:namedplace:pin",
+      "title": "Karl-Liebknecht-Straße 5",
+      "resultType": "houseNumber",
+      "address": { "label": "Karl-Liebknecht-Straße 5, 10178 Berlin, Germany" },
+      "position": { "lat": 52.52101, "lng": 13.41250 },
+      "access": [ { "lat": 52.52108, "lng": 13.41250 } ]
+    }
+  ]
+}

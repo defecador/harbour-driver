@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172 172" width="172" height="172">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a8bff"/>
+      <stop offset="1" stop-color="#1a73e8"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="172" height="172" rx="38" fill="url(#bg)"/>
+
+  <!-- winding route -->
+  <path d="M 34 128 C 50 100, 40 80, 62 72 C 84 64, 74 44, 96 40"
+        fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round"
+        stroke-dasharray="1 17" opacity="0.85"/>
+
+  <!-- origin dot -->
+  <circle cx="34" cy="128" r="8" fill="#ffffff"/>
+
+  <!-- destination pin -->
+  <g transform="translate(96,40)">
+    <path d="M0,-30 C15,-30 26,-19 26,-4 C26,14 0,38 0,38 C0,38 -26,14 -26,-4 C-26,-19 -15,-30 0,-30 Z"
+          fill="#ffffff"/>
+    <circle cx="0" cy="-4" r="10" fill="#1a73e8"/>
+  </g>
+</svg>

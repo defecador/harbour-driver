@@ -1,0 +1,20 @@
+module Matka.Components
+Icon 1.0 Icon.qml
+MText 1.0 MText.qml
+Card 1.0 Card.qml
+RoundIconButton 1.0 RoundIconButton.qml
+Chip 1.0 Chip.qml
+SearchPill 1.0 SearchPill.qml
+BottomSheet 1.0 BottomSheet.qml
+ModeTabs 1.0 ModeTabs.qml
+ListRow 1.0 ListRow.qml
+PrimaryButton 1.0 PrimaryButton.qml
+TextButton 1.0 TextButton.qml
+Ripple 1.0 Ripple.qml
+SwitchM 1.0 SwitchM.qml
+TextFieldM 1.0 TextFieldM.qml
+Snackbar 1.0 Snackbar.qml
+ScreenStack 1.0 ScreenStack.qml
+LineBadge 1.0 LineBadge.qml
+Divider 1.0 Divider.qml
+Haptics 1.0 Haptics.qml

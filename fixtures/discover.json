@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "id": "here:pds:place:276u33db-cd1f0aa50f0043678211fe0e15c9c0aa",
+      "title": "Brandenburg Gate",
+      "resultType": "place",
+      "address": { "label": "Brandenburg Gate, Pariser Platz, 10117 Berlin, Germany" },
+      "position": { "lat": 52.51628, "lng": 13.37770 },
+      "access": [ { "lat": 52.51637, "lng": 13.37770 } ],
+      "distance": 1240,
+      "categories": [ { "id": "300-3100-0000", "name": "Historical Monument", "primary": true } ]
+    },
+    {
+      "id": "here:pds:place:museum-island",
+      "title": "Museum Island",
+      "resultType": "place",
+      "address": { "label": "Museumsinsel, 10178 Berlin, Germany" },
+      "position": { "lat": 52.51655, "lng": 13.40024 },
+      "distance": 2050,
+      "categories": [ { "id": "300-3000-0025", "name": "Museum", "primary": true } ]
+    },
+    {
+      "id": "here:pds:place:tv-tower",
+      "title": "Berlin TV Tower",
+      "resultType": "place",
+      "address": { "label": "Panoramastraße 1A, 10178 Berlin, Germany" },
+      "position": { "lat": 52.52084, "lng": 13.40944 },
+      "distance": 690,
+      "categories": [ { "id": "300-3100-0066", "name": "Tourist Attraction", "primary": true } ]
+    }
+  ]
+}

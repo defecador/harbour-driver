@@ -1,0 +1,148 @@
+{
+    "routes": [
+        {
+            "id": "car-route-1",
+            "sections": [
+                {
+                    "type": "vehicle",
+                    "polyline": "BF-kygKg77xChDpUpF3iB3YriFhB9GAA",
+                    "departure": {
+                        "time": "2026-09-28T10:00:00+02:00",
+                        "place": {
+                            "name": "Alexanderplatz",
+                            "location": {
+                                "lat": 52.52175,
+                                "lng": 13.4136
+                            }
+                        }
+                    },
+                    "arrival": {
+                        "time": "2026-09-28T10:19:00+02:00",
+                        "place": {
+                            "name": "Brandenburg Gate",
+                            "location": {
+                                "lat": 52.51628,
+                                "lng": 13.3777
+                            }
+                        }
+                    },
+                    "summary": {
+                        "duration": 1140,
+                        "baseDuration": 780,
+                        "length": 4200
+                    },
+                    "actions": [
+                        {
+                            "action": "depart",
+                            "direction": "",
+                            "instruction": "Head west on Karl-Liebknecht-Straße",
+                            "length": 350,
+                            "duration": 60,
+                            "offset": 0
+                        },
+                        {
+                            "action": "turn",
+                            "direction": "left",
+                            "instruction": "Turn left onto Spandauer Straße",
+                            "length": 600,
+                            "duration": 90,
+                            "offset": 1
+                        },
+                        {
+                            "action": "continue",
+                            "direction": "",
+                            "instruction": "Continue onto Unter den Linden",
+                            "length": 2800,
+                            "duration": 780,
+                            "offset": 2
+                        },
+                        {
+                            "action": "roundaboutEnter",
+                            "direction": "right",
+                            "instruction": "Enter the roundabout at Pariser Platz",
+                            "length": 120,
+                            "duration": 40,
+                            "offset": 3
+                        },
+                        {
+                            "action": "arrive",
+                            "direction": "",
+                            "instruction": "Arrive at Brandenburg Gate",
+                            "length": 0,
+                            "duration": 0,
+                            "offset": 4
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "car-route-2",
+            "sections": [
+                {
+                    "type": "vehicle",
+                    "polyline": "BF-kygKg77xC5CpSpWxyEhJv7BAA",
+                    "departure": {
+                        "time": "2026-09-28T10:00:00+02:00",
+                        "place": {
+                            "name": "Alexanderplatz",
+                            "location": {
+                                "lat": 52.52175,
+                                "lng": 13.4136
+                            }
+                        }
+                    },
+                    "arrival": {
+                        "time": "2026-09-28T10:23:00+02:00",
+                        "place": {
+                            "name": "Brandenburg Gate",
+                            "location": {
+                                "lat": 52.51628,
+                                "lng": 13.3777
+                            }
+                        }
+                    },
+                    "summary": {
+                        "duration": 1380,
+                        "baseDuration": 1380,
+                        "length": 5100
+                    },
+                    "actions": [
+                        {
+                            "action": "depart",
+                            "direction": "",
+                            "instruction": "Head south on Alexanderstraße",
+                            "length": 400,
+                            "duration": 70,
+                            "offset": 0
+                        },
+                        {
+                            "action": "turn",
+                            "direction": "right",
+                            "instruction": "Turn right onto Leipziger Straße",
+                            "length": 3200,
+                            "duration": 900,
+                            "offset": 1
+                        },
+                        {
+                            "action": "turn",
+                            "direction": "right",
+                            "instruction": "Turn right onto Ebertstraße",
+                            "length": 1300,
+                            "duration": 350,
+                            "offset": 2
+                        },
+                        {
+                            "action": "arrive",
+                            "direction": "",
+                            "instruction": "Arrive at Brandenburg Gate",
+                            "length": 0,
+                            "duration": 0,
+                            "offset": 3
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

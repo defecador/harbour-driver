@@ -1,0 +1,64 @@
+{
+    "routes": [
+        {
+            "id": "walk-route-1",
+            "sections": [
+                {
+                    "type": "pedestrian",
+                    "polyline": "BF-kygKg77xCrDjW5enqGAA",
+                    "departure": {
+                        "time": "2026-09-28T10:00:00+02:00",
+                        "place": {
+                            "name": "Alexanderplatz",
+                            "location": {
+                                "lat": 52.52175,
+                                "lng": 13.4136
+                            }
+                        }
+                    },
+                    "arrival": {
+                        "time": "2026-09-28T10:48:00+02:00",
+                        "place": {
+                            "name": "Brandenburg Gate",
+                            "location": {
+                                "lat": 52.51628,
+                                "lng": 13.3777
+                            }
+                        }
+                    },
+                    "summary": {
+                        "duration": 2880,
+                        "baseDuration": 2880,
+                        "length": 3900
+                    },
+                    "actions": [
+                        {
+                            "action": "depart",
+                            "direction": "",
+                            "instruction": "Head west on Karl-Liebknecht-Straße",
+                            "length": 350,
+                            "duration": 260,
+                            "offset": 0
+                        },
+                        {
+                            "action": "continue",
+                            "direction": "",
+                            "instruction": "Continue onto Unter den Linden",
+                            "length": 3200,
+                            "duration": 2400,
+                            "offset": 1
+                        },
+                        {
+                            "action": "arrive",
+                            "direction": "",
+                            "instruction": "Arrive at Brandenburg Gate",
+                            "length": 0,
+                            "duration": 0,
+                            "offset": 2
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

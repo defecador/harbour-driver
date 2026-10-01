@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+*.o
+*.moc
+moc_*
+qrc_*
+*.rpm
+*.tar.bz2
+.qmake.stash
+Makefile*
+
+# Sailfish SDK
+.sfdk/
+RPMS/
+SRPMS/
+SOURCES/
+BUILD/
+BUILDROOT/
+documentation.list
+target_wrapper.sh
+translations/*.qm
+tst_matka
+
+# Editors / OS
+*~
+.DS_Store
+.directory
+*.swp
+
+# Compiled outputs
+/harbour-matka
+/tst_matka
+tests/tst_matka

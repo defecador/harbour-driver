@@ -1,0 +1,195 @@
+{
+  "routes": [
+    {
+      "id": "transit-route-1",
+      "sections": [
+        {
+          "type": "pedestrian",
+          "polyline": "BF-kygKg77xCWrD",
+          "departure": {
+            "time": "2026-09-28T10:00:00+02:00",
+            "place": {
+              "name": "Alexanderplatz",
+              "location": {
+                "lat": 52.52175,
+                "lng": 13.4136
+              }
+            }
+          },
+          "arrival": {
+            "time": "2026-09-28T10:04:00+02:00",
+            "place": {
+              "name": "U Alexanderplatz",
+              "location": {
+                "lat": 52.52186,
+                "lng": 13.41306
+              },
+              "platform": ""
+            }
+          },
+          "travelSummary": {
+            "duration": 240,
+            "length": 320
+          },
+          "actions": [
+            {
+              "action": "depart",
+              "direction": "",
+              "instruction": "Head to U Alexanderplatz",
+              "length": 320,
+              "duration": 240,
+              "offset": 0
+            },
+            {
+              "action": "arrive",
+              "direction": "",
+              "instruction": "Arrive at U Alexanderplatz",
+              "length": 0,
+              "duration": 0,
+              "offset": 1
+            }
+          ]
+        },
+        {
+          "type": "transit",
+          "polyline": "BF0lygK037xCpsBnhD_Etf",
+          "transport": {
+            "mode": "subway",
+            "name": "U2",
+            "headsign": "Ruhleben",
+            "color": "e4592e",
+            "textColor": "ffffff"
+          },
+          "agency": {
+            "name": "BVG"
+          },
+          "departure": {
+            "time": "2026-09-28T10:07:00+02:00",
+            "place": {
+              "name": "U Alexanderplatz",
+              "location": {
+                "lat": 52.52186,
+                "lng": 13.41306
+              },
+              "platform": "2"
+            },
+            "delay": 240,
+            "status": "delayed"
+          },
+          "arrival": {
+            "time": "2026-09-28T10:16:00+02:00",
+            "place": {
+              "name": "U Mohrenstraße",
+              "location": {
+                "lat": 52.51397,
+                "lng": 13.39247
+              },
+              "platform": "1"
+            },
+            "delay": 240,
+            "status": "delayed"
+          },
+          "travelSummary": {
+            "duration": 540,
+            "length": 2600
+          },
+          "intermediateStops": [
+            {
+              "departure": {
+                "time": "2026-09-28T10:09:00+02:00",
+                "place": {
+                  "name": "U Klosterstraße",
+                  "location": {
+                    "lat": 52.51674,
+                    "lng": 13.40963
+                  }
+                }
+              }
+            },
+            {
+              "departure": {
+                "time": "2026-09-28T10:10:00+02:00",
+                "place": {
+                  "name": "U Hausvogteiplatz",
+                  "location": {
+                    "lat": 52.51477,
+                    "lng": 13.3975
+                  }
+                }
+              }
+            },
+            {
+              "departure": {
+                "time": "2026-09-28T10:13:00+02:00",
+                "place": {
+                  "name": "U Stadtmitte",
+                  "location": {
+                    "lat": 52.5125,
+                    "lng": 13.3905
+                  }
+                }
+              }
+            }
+          ],
+          "attributions": [
+            {
+              "text": "Data: BVG (Berliner Verkehrsbetriebe)",
+              "type": "credit"
+            },
+            {
+              "text": "Timetable data may not reflect last-minute changes.",
+              "type": "disclaimer"
+            }
+          ],
+          "actions": []
+        },
+        {
+          "type": "pedestrian",
+          "polyline": "BFq0wgK-23xCuOp8C",
+          "departure": {
+            "time": "2026-09-28T10:16:00+02:00",
+            "place": {
+              "name": "U Mohrenstraße",
+              "location": {
+                "lat": 52.51397,
+                "lng": 13.39247
+              }
+            }
+          },
+          "arrival": {
+            "time": "2026-09-28T10:22:00+02:00",
+            "place": {
+              "name": "Brandenburg Gate",
+              "location": {
+                "lat": 52.51628,
+                "lng": 13.3777
+              }
+            }
+          },
+          "travelSummary": {
+            "duration": 360,
+            "length": 480
+          },
+          "actions": [
+            {
+              "action": "depart",
+              "direction": "",
+              "instruction": "Head to Brandenburg Gate",
+              "length": 400,
+              "duration": 360,
+              "offset": 0
+            },
+            {
+              "action": "arrive",
+              "direction": "",
+              "instruction": "Arrive at Brandenburg Gate",
+              "length": 0,
+              "duration": 0,
+              "offset": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
