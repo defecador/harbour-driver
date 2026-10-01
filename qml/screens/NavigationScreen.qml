@@ -49,8 +49,8 @@ Item {
     // screen off (or the app minimised) still gets woken up in time.
     Notification {
         id: transitNotification
-        appName: "Matka"
-        category: "x-matka.transit"
+        appName: "Driver"
+        category: "x-driver.transit"
         urgency: Notification.Critical
     }
 

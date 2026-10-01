@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
 X-Nemo-Application-Type=silica-qt5
-Icon=harbour-matka
-Exec=harbour-matka
-Name=Matka
+Icon=harbour-driver
+Exec=harbour-driver
+Name=Driver
 
 [X-Sailjail]
-OrganizationName=org.matka
-ApplicationName=Matka
+OrganizationName=org.driver
+ApplicationName=Driver
 Permissions=Internet;Location;Notifications

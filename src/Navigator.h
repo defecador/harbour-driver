@@ -25,10 +25,10 @@ class HereClient;
 class Navigator : public QObject
 {
     Q_OBJECT
-    // Lets tst_matka.cpp drive the normally-timer-only tick and the
+    // Lets tst_driver.cpp drive the normally-timer-only tick and the
     // normally-network-only delay-refresh callback directly, with fake
     // timestamps/results, instead of needing a real QTimer/HereClient.
-    friend class TstMatka;
+    friend class TstDriver;
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString mode READ mode NOTIFY stateChanged)
 

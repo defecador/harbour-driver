@@ -13,7 +13,7 @@
 #include "NavGeo.h"
 #include "Navigator.h"
 
-class TstMatka : public QObject
+class TstDriver : public QObject
 {
     Q_OBJECT
 
@@ -74,7 +74,7 @@ private slots:
 // Encoded with a from-scratch encoder that mirrors FlexiblePolyline::decode()
 // (version=1, precision=5, no third dimension); verified in Python to decode
 // back to these exact points before being pasted in here.
-void TstMatka::polyline_decodesKnownEncoding()
+void TstDriver::polyline_decodesKnownEncoding()
 {
     const auto pts = FlexiblePolyline::decode(QStringLiteral("BFoz5xJ67i1B1B7PzIha9L7Y"));
     QCOMPARE(pts.size(), 4);
@@ -87,13 +87,13 @@ void TstMatka::polyline_decodesKnownEncoding()
     QVERIFY(qAbs(pts[3].lng - 8.68752) < 1e-9);
 }
 
-void TstMatka::polyline_rejectsBadVersion()
+void TstDriver::polyline_rejectsBadVersion()
 {
     // First varint (version) decodes to 2, which decode() must refuse.
     QVERIFY(FlexiblePolyline::decode(QStringLiteral("CFoz5xJ")).isEmpty());
 }
 
-void TstMatka::polyline_emptyInputGivesEmptyOutput()
+void TstDriver::polyline_emptyInputGivesEmptyOutput()
 {
     QVERIFY(FlexiblePolyline::decode(QString()).isEmpty());
 }
@@ -151,7 +151,7 @@ QJsonArray makeActions(const QVector<QPair<QString, int>> &actionOffsets)
 
 // Section 1 has 3 polyline points (so its actions' own offsets run 0..2);
 // section 2's actions must come back shifted by 3 once flattened to route level.
-void TstMatka::parser_routeActionOffsetsAreFlattenedAcrossSections()
+void TstDriver::parser_routeActionOffsetsAreFlattenedAcrossSections()
 {
     QJsonArray s1Actions = makeActions({{QStringLiteral("depart"), 0}, {QStringLiteral("turn"), 2}});
     QJsonArray s2Actions = makeActions({{QStringLiteral("arrive"), 0}});
@@ -183,7 +183,7 @@ void TstMatka::parser_routeActionOffsetsAreFlattenedAcrossSections()
     QCOMPARE(leg2Actions[0].toMap().value(QStringLiteral("offset")).toInt(), 0);
 }
 
-void TstMatka::parser_legActionOffsetsStayLocal()
+void TstDriver::parser_legActionOffsetsStayLocal()
 {
     QJsonArray actions = makeActions({{QStringLiteral("depart"), 0}, {QStringLiteral("arrive"), 5}});
     QJsonObject s = makeSection(QStringLiteral("pedestrian"), 52.0, 13.0, 52.01, 13.01, 300, 400, actions);
@@ -198,13 +198,13 @@ void TstMatka::parser_legActionOffsetsStayLocal()
     QCOMPARE(legActions[1].toMap().value(QStringLiteral("offset")).toInt(), 5);
 }
 
-void TstMatka::parser_timeTextExtractsHHMM()
+void TstDriver::parser_timeTextExtractsHHMM()
 {
     QCOMPARE(ItineraryParser::timeText(QStringLiteral("2026-09-28T10:07:00+02:00")), QStringLiteral("10:07"));
     QCOMPARE(ItineraryParser::timeText(QStringLiteral("not-a-date")), QString());
 }
 
-void TstMatka::parser_carTrafficDelayIsDurationMinusBase()
+void TstDriver::parser_carTrafficDelayIsDurationMinusBase()
 {
     QJsonObject s = makeSection(QStringLiteral("vehicle"), 52.0, 13.0, 52.1, 13.1, 900, 4000);
     QJsonObject sum = s[QStringLiteral("summary")].toObject();
@@ -219,35 +219,35 @@ void TstMatka::parser_carTrafficDelayIsDurationMinusBase()
     QCOMPARE(items.first().toMap().value(QStringLiteral("trafficDelay")).toInt(), 300);
 }
 
-void TstMatka::urls_routeOmitsCourseByDefault()
+void TstDriver::urls_routeOmitsCourseByDefault()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("car"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 2);
     QVERIFY(!url.toString().contains(QStringLiteral("course=")));
 }
 
-void TstMatka::urls_routeAddsCourseWhenGiven()
+void TstDriver::urls_routeAddsCourseWhenGiven()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("car"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0, 270);
     QVERIFY(url.toString().contains(QStringLiteral("course%3D270")) || url.toString().contains(QStringLiteral("course=270")));
 }
 
-void TstMatka::urls_pedestrianRouteSendsDepartureTimeAny()
+void TstDriver::urls_pedestrianRouteSendsDepartureTimeAny()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("pedestrian"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0);
     QVERIFY(url.toString().contains(QStringLiteral("departureTime")));
 }
 
-void TstMatka::urls_carRouteOmitsDepartureTime()
+void TstDriver::urls_carRouteOmitsDepartureTime()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("car"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0);
     QVERIFY(!url.toString().contains(QStringLiteral("departureTime")));
 }
 
-void TstMatka::urls_bicycleShortestSetsRoutingMode()
+void TstDriver::urls_bicycleShortestSetsRoutingMode()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("bicycle"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0, -1, {}, QStringLiteral("short"));
@@ -257,7 +257,7 @@ void TstMatka::urls_bicycleShortestSetsRoutingMode()
     QVERIFY(!plain.toString().contains(QStringLiteral("routingMode")));
 }
 
-void TstMatka::urls_viasAreAskedToPassThrough()
+void TstDriver::urls_viasAreAskedToPassThrough()
 {
     const QUrl url = HereUrls::route(QStringLiteral("k"), QStringLiteral("pedestrian"), {52.0, 13.0}, {52.1, 13.1},
                                      QStringLiteral("en-GB"), QStringLiteral("metric"), 0, -1, {{52.05, 13.05}});
@@ -265,7 +265,7 @@ void TstMatka::urls_viasAreAskedToPassThrough()
     QVERIFY(s.contains(QStringLiteral("via=52.050000,13.050000!passThrough=true")));
 }
 
-void TstMatka::urls_valhallaRequestCarriesViasAndNoKey()
+void TstDriver::urls_valhallaRequestCarriesViasAndNoKey()
 {
     const QUrl url = HereUrls::valhallaBicycle({52.0, 13.0}, {52.1, 13.1}, {{52.05, 13.05}},
                                                QStringLiteral("en-US"), QStringLiteral("metric"));
@@ -278,7 +278,7 @@ void TstMatka::urls_valhallaRequestCarriesViasAndNoKey()
     QCOMPARE(req.value(QStringLiteral("costing")).toString(), QStringLiteral("bicycle"));
 }
 
-void TstMatka::parser_valhallaRouteBecomesAnItinerary()
+void TstDriver::parser_valhallaRouteBecomesAnItinerary()
 {
     // Shape: 5 points encoded with 6-decimal precision (52.5208,13.4094 ... 52.5163,13.3777).
     const QString json = QStringLiteral(
@@ -307,21 +307,21 @@ void TstMatka::parser_valhallaRouteBecomesAnItinerary()
     QVERIFY(ItineraryParser::parseValhalla(QJsonObject(), QStringLiteral("bicycle")).isEmpty());
 }
 
-void TstMatka::urls_transitReturnIncludesActions()
+void TstDriver::urls_transitReturnIncludesActions()
 {
     const QUrl url = HereUrls::transit(QStringLiteral("k"), {52.0, 13.0}, {52.1, 13.1},
                                        QStringLiteral("en-GB"), QStringLiteral("metric"), 3);
     QVERIFY(url.toString().contains(QStringLiteral("actions")));
 }
 
-void TstMatka::urls_redactHidesApiKeyValue()
+void TstDriver::urls_redactHidesApiKeyValue()
 {
     const QString redacted = HereUrls::redact(QStringLiteral("https://x/?apiKey=SECRET123&lang=en"));
     QVERIFY(!redacted.contains(QStringLiteral("SECRET123")));
     QVERIFY(redacted.contains(QStringLiteral("lang=en")));
 }
 
-void TstMatka::navgeo_metersBetweenMatchesKnownDistance()
+void TstDriver::navgeo_metersBetweenMatchesKnownDistance()
 {
     // One degree of longitude at the equator is ~111.19 km with NavGeo's own
     // Earth radius (6371 km); this checks the helper against that, not GPS
@@ -331,7 +331,7 @@ void TstMatka::navgeo_metersBetweenMatchesKnownDistance()
     QVERIFY(qAbs(d - 111194.9) < 1.0);
 }
 
-void TstMatka::navgeo_projectOntoSegmentFindsMidpoint()
+void TstDriver::navgeo_projectOntoSegmentFindsMidpoint()
 {
     // A point north of the segment's own midpoint longitude (13.005, halfway
     // between 13.0 and 13.01) should project onto the midpoint (t=0.5).
@@ -340,7 +340,7 @@ void TstMatka::navgeo_projectOntoSegmentFindsMidpoint()
     QVERIFY(qAbs(proj.perpDistance - NavGeo::metersBetween(0.0, 13.005, 0.001, 13.005)) < 1.0);
 }
 
-void TstMatka::navgeo_projectOntoSegmentClampsPastEndpoints()
+void TstDriver::navgeo_projectOntoSegmentClampsPastEndpoints()
 {
     // A point far beyond B must still project onto B itself (t clamped to 1),
     // never extrapolated past the segment.
@@ -407,7 +407,7 @@ QVariantMap destOf(const QGeoCoordinate &c)
 
 }
 
-void TstMatka::navigator_tracksProgressAndRemainingTime()
+void TstDriver::navigator_tracksProgressAndRemainingTime()
 {
     // depart(0m) --60s--> turn(200m) --40s--> arrive(400m)
     const auto itinerary = makeItinerary(QStringLiteral("car"),
@@ -430,7 +430,7 @@ void TstMatka::navigator_tracksProgressAndRemainingTime()
     QVERIFY(qAbs(nav.remainingSeconds() - 70) <= 1);
 }
 
-void TstMatka::navigator_firesArrivedNearFinalPoint()
+void TstDriver::navigator_firesArrivedNearFinalPoint()
 {
     const auto itinerary = makeItinerary(QStringLiteral("car"),
             {onTestRoute(0), onTestRoute(400)},
@@ -448,7 +448,7 @@ void TstMatka::navigator_firesArrivedNearFinalPoint()
     QCOMPARE(nav.state(), QStringLiteral("arrived"));
 }
 
-void TstMatka::navigator_thenPreviewOnlyWhenManeuversAreClose()
+void TstDriver::navigator_thenPreviewOnlyWhenManeuversAreClose()
 {
     // Two maneuvers 80m apart (< 150m threshold): "then" should show.
     auto closeItinerary = makeItinerary(QStringLiteral("car"),
@@ -478,7 +478,7 @@ void TstMatka::navigator_thenPreviewOnlyWhenManeuversAreClose()
     QVERIFY(!far.hasThen());
 }
 
-void TstMatka::navigator_announcesEachTierExactlyOnce()
+void TstDriver::navigator_announcesEachTierExactlyOnce()
 {
     // Pedestrian thresholds are far=60m, near=12m, now=5m.
     const auto itinerary = makeItinerary(QStringLiteral("pedestrian"),
@@ -512,7 +512,7 @@ void TstMatka::navigator_announcesEachTierExactlyOnce()
     QCOMPARE(spy.count(), 3);
 }
 
-void TstMatka::navigator_addStopIsWalkAndBikeOnly()
+void TstDriver::navigator_addStopIsWalkAndBikeOnly()
 {
     const auto itinerary = makeItinerary(QStringLiteral("car"),
             {onTestRoute(0), onTestRoute(400)},
@@ -531,7 +531,7 @@ void TstMatka::navigator_addStopIsWalkAndBikeOnly()
     QCOMPARE(requests, 0);
 }
 
-void TstMatka::navigator_failedAddStopIsDropped()
+void TstDriver::navigator_failedAddStopIsDropped()
 {
     const auto itinerary = makeItinerary(QStringLiteral("pedestrian"),
             {onTestRoute(0), onTestRoute(400)},
@@ -558,7 +558,7 @@ void TstMatka::navigator_failedAddStopIsDropped()
     QVERIFY(sawFailure);
 }
 
-void TstMatka::navigator_stopIsReachedAndTripContinues()
+void TstDriver::navigator_stopIsReachedAndTripContinues()
 {
     const auto firstRoute = makeItinerary(QStringLiteral("pedestrian"),
             {onTestRoute(0), onTestRoute(300)},
@@ -611,7 +611,7 @@ void TstMatka::navigator_stopIsReachedAndTripContinues()
     QCOMPARE(arrivedSpy.count(), 1);
 }
 
-void TstMatka::navigator_stopIsReachedByWalkingUpToIt()
+void TstDriver::navigator_stopIsReachedByWalkingUpToIt()
 {
     // Pass-through stops have no "arrive" maneuver: walking up to the stop is what counts.
     const auto route = makeItinerary(QStringLiteral("pedestrian"),
@@ -639,7 +639,7 @@ void TstMatka::navigator_stopIsReachedByWalkingUpToIt()
     QCOMPARE(nav.state(), QStringLiteral("guiding"));
 }
 
-void TstMatka::navigator_offRouteWaitsBeforeRerouting()
+void TstDriver::navigator_offRouteWaitsBeforeRerouting()
 {
     const auto itinerary = makeItinerary(QStringLiteral("car"),
             {onTestRoute(0), onTestRoute(1000)},
@@ -666,7 +666,7 @@ void TstMatka::navigator_offRouteWaitsBeforeRerouting()
     QCOMPARE(nav.rerouteCount(), 1);
 }
 
-void TstMatka::navigator_rerouteRespectsCooldownAndPerTripLimit()
+void TstDriver::navigator_rerouteRespectsCooldownAndPerTripLimit()
 {
     const auto itinerary = makeItinerary(QStringLiteral("car"),
             {onTestRoute(0), onTestRoute(100000)},
@@ -703,7 +703,7 @@ void TstMatka::navigator_rerouteRespectsCooldownAndPerTripLimit()
 // Navigator transit tests
 // =======================================================================
 
-void TstMatka::parser_stopExpectedMsEqualsTime()
+void TstDriver::parser_stopExpectedMsEqualsTime()
 {
     QJsonObject depPlace, depLoc;
     depLoc[QStringLiteral("lat")] = 52.0;
@@ -834,7 +834,7 @@ QVariantMap makeTransitItinerary(const QVariantList &legs)
 // walk(0->40m, base 0.0) -> transit(U2, base 0.001, 0->600m, 1 intermediate
 // stop at 300m) -> walk(base 0.002, 0->40m) -> arrived. Driven purely by
 // simulated GPS fixes at the fake clock's timestamps, mirroring a real trip.
-void TstMatka::transit_walksWaitsRidesAlightsAndArrives()
+void TstDriver::transit_walksWaitsRidesAlightsAndArrives()
 {
     const qint64 t0 = 1000000;
     // Walk legs are well longer than kStopRadius (40m) so the first fix, at
@@ -904,7 +904,7 @@ void TstMatka::transit_walksWaitsRidesAlightsAndArrives()
 
 // With no GPS fix at all during the ride, stops still advance from the
 // timetable alone once their (delay-adjusted) time has passed.
-void TstMatka::transit_countsStopsByTimetableWithNoGpsFix()
+void TstDriver::transit_countsStopsByTimetableWithNoGpsFix()
 {
     const qint64 t0 = 2000000;
     const auto b0 = transitPointAt(0.01, 0), bMid = transitPointAt(0.01, 300), b1 = transitPointAt(0.01, 600);
@@ -935,7 +935,7 @@ void TstMatka::transit_countsStopsByTimetableWithNoGpsFix()
     QCOMPARE(nav.state(), QStringLiteral("arrived"));
 }
 
-void TstMatka::transit_alightAnnouncementsFireExactlyOnce()
+void TstDriver::transit_alightAnnouncementsFireExactlyOnce()
 {
     const qint64 t0 = 3000000;
     const auto b0 = transitPointAt(0.02, 0), b1 = transitPointAt(0.02, 400);
@@ -971,7 +971,7 @@ void TstMatka::transit_alightAnnouncementsFireExactlyOnce()
     QCOMPARE(alightNowCount, 1);
 }
 
-void TstMatka::transit_missedConnectionSetsFlagWithoutRequest()
+void TstDriver::transit_missedConnectionSetsFlagWithoutRequest()
 {
     const qint64 t0 = 4000000;
     const auto b0 = transitPointAt(0.03, 0), b1 = transitPointAt(0.03, 400);
@@ -996,7 +996,7 @@ void TstMatka::transit_missedConnectionSetsFlagWithoutRequest()
     QCOMPARE(requests, 0);   // detecting a miss never spends a HERE call by itself.
 }
 
-void TstMatka::transit_replanTransitMakesExactlyOneRequest()
+void TstDriver::transit_replanTransitMakesExactlyOneRequest()
 {
     const qint64 t0 = 5000000;
     const auto b0 = transitPointAt(0.04, 0), b1 = transitPointAt(0.04, 400);
@@ -1018,7 +1018,7 @@ void TstMatka::transit_replanTransitMakesExactlyOneRequest()
     QCOMPARE(nav.rerouteCount(), 1);
 }
 
-void TstMatka::transit_delayRefreshUpdatesMatchingLegOnly()
+void TstDriver::transit_delayRefreshUpdatesMatchingLegOnly()
 {
     // This exercises applyDelayRefresh()'s matching logic directly (same
     // shape HereClient's callback would hand it), since driving the real
@@ -1041,7 +1041,7 @@ void TstMatka::transit_delayRefreshUpdatesMatchingLegOnly()
     QCOMPARE(nav.departureDelay(), 180);
 }
 
-void TstMatka::transit_delayRefreshNoMatchKeepsOldPlan()
+void TstDriver::transit_delayRefreshNoMatchKeepsOldPlan()
 {
     const qint64 t0 = 7000000;
     const auto b0 = transitPointAt(0.06, 0), b1 = transitPointAt(0.06, 400);
@@ -1061,7 +1061,7 @@ void TstMatka::transit_delayRefreshNoMatchKeepsOldPlan()
     QCOMPARE(nav.departureDelay(), 0);
 }
 
-void TstMatka::transit_hurryWhenWalkIsLongerThanTimeToDeparture()
+void TstDriver::transit_hurryWhenWalkIsLongerThanTimeToDeparture()
 {
     const qint64 t0 = 8000000;
     const auto a0 = transitPointAt(0.07, 0), a1 = transitPointAt(0.07, 400);   // long walk: 400m at 1.4m/s ~ 286s
@@ -1087,7 +1087,7 @@ void TstMatka::transit_hurryWhenWalkIsLongerThanTimeToDeparture()
     QVERIFY(nav.hurry());
 }
 
-void TstMatka::transit_offRouteOnWalkLegReroutesPedestrianToLegEnd()
+void TstDriver::transit_offRouteOnWalkLegReroutesPedestrianToLegEnd()
 {
     const qint64 t0 = 9000000;
     const auto a0 = transitPointAt(0.08, 0), a1 = transitPointAt(0.08, 1000);
@@ -1112,5 +1112,5 @@ void TstMatka::transit_offRouteOnWalkLegReroutesPedestrianToLegEnd()
     QCOMPARE(requests, 1);
 }
 
-QTEST_GUILESS_MAIN(TstMatka)
-#include "tst_matka.moc"
+QTEST_GUILESS_MAIN(TstDriver)
+#include "tst_driver.moc"

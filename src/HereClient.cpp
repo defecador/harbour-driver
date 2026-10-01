@@ -34,7 +34,7 @@ QPointer<QNetworkReply> HereClient::get(const QUrl &url, const QString &fixture,
     else
         qInfo("GET %s", qPrintable(url.host()));
     QNetworkRequest req(url);
-    req.setRawHeader("User-Agent", QByteArray("harbour-matka/") + QCoreApplication::applicationVersion().toUtf8()
+    req.setRawHeader("User-Agent", QByteArray("harbour-driver/") + QCoreApplication::applicationVersion().toUtf8()
                      + " (Sailfish OS)");
     QNetworkReply *reply = m_nam.get(req);
 

@@ -3,7 +3,7 @@
 #include <QLocale>
 #include <QStandardPaths>
 
-// Stored under ~/.config/org.matka/Matka/ which the Sailjail sandbox allows.
+// Stored under ~/.config/org.driver/Driver/ which the Sailjail sandbox allows.
 AppSettings::AppSettings(QObject *parent)
     : QObject(parent)
     , m_s(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/settings.conf"),

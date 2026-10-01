@@ -1,2 +1,2 @@
-module Matka.Theme
+module Driver.Theme
 singleton M 1.0 M.qml

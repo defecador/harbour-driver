@@ -18,7 +18,7 @@ Item {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             variant: "title"
-            text: qsTr("Welcome to Matka")
+            text: qsTr("Welcome to Driver")
         }
 
         MText {
@@ -26,7 +26,7 @@ Item {
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
             color: M.inkMuted
-            text: qsTr("Matka plans trips using HERE's routing, transit and map services. By continuing, you agree to HERE's End User Terms and Privacy Policy, which apply once you add your own HERE API key in Settings.")
+            text: qsTr("Driver plans trips using HERE's routing, transit and map services. By continuing, you agree to HERE's End User Terms and Privacy Policy, which apply once you add your own HERE API key in Settings.")
         }
 
         Row {

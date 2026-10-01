@@ -4,11 +4,11 @@
 <context>
     <name>AboutScreen</name>
     <message>
-        <source>About Matka</source>
+        <source>About Driver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Matka is an independent, unofficial trip planner for Sailfish OS. Version %1.</source>
+        <source>Driver is an independent, unofficial trip planner for Sailfish OS. Version %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -36,7 +36,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Matka is free software, released under the GNU General Public License v3.0.</source>
+        <source>Driver is free software, released under the GNU General Public License v3.0.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -73,11 +73,11 @@
 <context>
     <name>FirstRunTerms</name>
     <message>
-        <source>Welcome to Matka</source>
+        <source>Welcome to Driver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Matka plans trips using HERE&apos;s routing, transit and map services. By continuing, you agree to HERE&apos;s End User Terms and Privacy Policy, which apply once you add your own HERE API key in Settings.</source>
+        <source>Driver plans trips using HERE&apos;s routing, transit and map services. By continuing, you agree to HERE&apos;s End User Terms and Privacy Policy, which apply once you add your own HERE API key in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -131,7 +131,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>About Matka</source>
+        <source>About Driver</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

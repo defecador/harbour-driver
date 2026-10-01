@@ -1,4 +1,4 @@
-module Matka.Components
+module Driver.Components
 Icon 1.0 Icon.qml
 MText 1.0 MText.qml
 Card 1.0 Card.qml

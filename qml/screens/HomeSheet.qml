@@ -95,7 +95,7 @@ Item {
                 width: col.width
                 iconName: "info"
                 iconBg: M.surfaceVariant
-                title: qsTr("About Matka")
+                title: qsTr("About Driver")
                 showChevron: true
                 showDivider: false
                 onClicked: root.aboutTapped()

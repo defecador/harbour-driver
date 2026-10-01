@@ -1,6 +1,6 @@
-# Matka - a WeGo-style trip planner for Sailfish OS, built on the HERE APIs.
+# Driver - a WeGo-style trip planner for Sailfish OS, built on the HERE APIs.
 
-TARGET = harbour-matka
+TARGET = harbour-driver
 
 CONFIG += sailfishapp c++14
 QT += network positioning
@@ -33,10 +33,10 @@ HEADERS += \
     src/Navigator.h
 
 DISTFILES += \
-    qml/harbour-matka.qml \
+    qml/harbour-driver.qml \
     qml/AppRoot.qml \
-    rpm/harbour-matka.spec \
-    harbour-matka.desktop
+    rpm/harbour-driver.spec \
+    harbour-driver.desktop
 
 assets.files = assets
 assets.path = /usr/share/$${TARGET}
@@ -49,4 +49,4 @@ INSTALLS += fixtures
 SAILFISHAPP_ICONS = 86x86 108x108 128x128 172x172
 
 CONFIG += sailfishapp_i18n
-TRANSLATIONS += translations/harbour-matka.ts
+TRANSLATIONS += translations/harbour-driver.ts

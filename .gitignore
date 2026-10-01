@@ -19,7 +19,7 @@ BUILDROOT/
 documentation.list
 target_wrapper.sh
 translations/*.qm
-tst_matka
+tst_driver
 
 # Editors / OS
 *~
@@ -28,6 +28,6 @@ tst_matka
 *.swp
 
 # Compiled outputs
-/harbour-matka
-/tst_matka
-tests/tst_matka
+/harbour-driver
+/tst_driver
+tests/tst_driver

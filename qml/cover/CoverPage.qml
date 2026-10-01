@@ -26,7 +26,7 @@ CoverBackground {
         Icon { anchors.horizontalCenter: parent.horizontalCenter; name: "directions"; size: 40 * M.dp; color: "#ffffff" }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Matka"
+            text: "Driver"
             color: "#ffffff"
             font.pixelSize: Theme.fontSizeLarge
         }

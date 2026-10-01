@@ -327,12 +327,12 @@ private:
 int main(int argc, char *argv[])
 {
     QGuiApplication *app = SailfishApp::application(argc, argv);
-    // Must match the [X-Sailjail] OrganizationName/ApplicationName in harbour-matka.desktop:
+    // Must match the [X-Sailjail] OrganizationName/ApplicationName in harbour-driver.desktop:
     // Sailjail binds its persistent, writable per-app data directory based on those names, and
     // QSettings resolves its config path from these same names, so a mismatch here silently
     // sends every settings write into a throwaway sandbox view that never survives a restart.
-    app->setApplicationName(QStringLiteral("Matka"));
-    app->setOrganizationName(QStringLiteral("org.matka"));
+    app->setApplicationName(QStringLiteral("Driver"));
+    app->setOrganizationName(QStringLiteral("org.driver"));
     app->setApplicationVersion(QStringLiteral(APP_VERSION));
 
     bool fixtures = false;
@@ -388,12 +388,12 @@ int main(int argc, char *argv[])
         for (const QQmlError &e : warnings)
             qWarning("QML: %s", qPrintable(e.toString()));
     });
-    view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-matka.qml")));
+    view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-driver.qml")));
     if (view->status() == QQuickView::Error) {
         for (const QQmlError &e : view->errors())
             qWarning("QML load error: %s", qPrintable(e.toString()));
     }
-    view->setTitle(QStringLiteral("Matka"));
+    view->setTitle(QStringLiteral("Driver"));
     view->show();
 
     if (!devGrab.isEmpty())

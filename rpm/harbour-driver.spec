@@ -1,10 +1,10 @@
-Name:       harbour-matka
+Name:       harbour-driver
 
-Summary:    Matka trip planner
+Summary:    Driver trip planner
 Version:    0.8.0
 Release:    1
 License:    GPLv3
-URL:        https://example.org/harbour-matka
+URL:        https://example.org/harbour-driver
 Source0:    %{name}-%{version}.tar.bz2
 Requires:   sailfishsilica-qt5 >= 0.10.9
 Requires:   qt5-qtpositioning
@@ -52,7 +52,7 @@ desktop-file-install --delete-original       \
 %check
 %qmake5 tests/tests.pro
 %make_build
-./tst_matka
+./tst_driver
 
 %files
 %defattr(-,root,root,-)

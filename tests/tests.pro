@@ -1,6 +1,6 @@
 # Plain Qt unit test project (no sailfishapp dependency), run via `%check` in the
 # RPM spec and locally with `qmake tests/tests.pro && make check`.
-TARGET = tst_matka
+TARGET = tst_driver
 TEMPLATE = app
 CONFIG += console c++14 testcase
 CONFIG -= app_bundle
@@ -10,7 +10,7 @@ QT -= gui
 INCLUDEPATH += ../src
 
 SOURCES += \
-    tst_matka.cpp \
+    tst_driver.cpp \
     ../src/FlexiblePolyline.cpp \
     ../src/HereUrls.cpp \
     ../src/ItineraryParser.cpp \

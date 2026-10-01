@@ -25,7 +25,7 @@ Item {
             MText {
                 anchors.centerIn: parent
                 variant: "subtitle"
-                text: qsTr("About Matka")
+                text: qsTr("About Driver")
             }
         }
         Divider { width: parent.width }
@@ -46,7 +46,7 @@ Item {
                 MText {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: qsTr("Matka is an independent, unofficial trip planner for Sailfish OS. Version %1.").arg(AppTools.appVersion)
+                    text: qsTr("Driver is an independent, unofficial trip planner for Sailfish OS. Version %1.").arg(AppTools.appVersion)
                 }
 
                 MText { variant: "subtitle"; text: qsTr("Data & maps") }
@@ -76,7 +76,7 @@ Item {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     color: M.inkMuted
-                    text: qsTr("Matka is free software, released under the GNU General Public License v3.0.")
+                    text: qsTr("Driver is free software, released under the GNU General Public License v3.0.")
                 }
 
                 Item { width: 1; height: M.spacingM }

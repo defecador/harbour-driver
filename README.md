@@ -1,10 +1,10 @@
-# Matka
+# Driver
 
-Matka ("journey" in Finnish) is an independent, unofficial trip planner for
+Driver is an independent, unofficial trip planner for
 Sailfish OS, in the spirit of Google's HERE WeGo: plan trips by car (with
 live traffic), public transport, bike and on foot.
 
-Matka is not affiliated with or endorsed by HERE Global B.V. It uses HERE's
+Driver is not affiliated with or endorsed by HERE Global B.V. It uses HERE's
 routing, transit, search and map APIs, but ships no HERE branding, icons or
 artwork of its own.
 
@@ -15,14 +15,14 @@ details). Turn-by-turn navigation is not implemented yet.
 
 ## Getting a HERE API key
 
-Matka needs your own [HERE](https://developer.here.com) API key to fetch
+Driver needs your own [HERE](https://developer.here.com) API key to fetch
 routes, transit itineraries, search results and map tiles:
 
 1. Create a free HERE Developer account.
 2. Create a REST API key (the free tier is generous enough for personal use).
-3. Open Matka → Settings → paste the key → **Test key**.
+3. Open Driver → Settings → paste the key → **Test key**.
 
-Without a key, Matka still runs: the map falls back to
+Without a key, Driver still runs: the map falls back to
 [OpenFreeMap](https://openfreemap.org) / OpenStreetMap, but search, routing
 and transit are unavailable.
 
@@ -31,7 +31,7 @@ and transit are unavailable.
 Requires the [Sailfish OS SDK](https://sailfishos.org/wiki/Application_SDK)
 and, on the target device, the
 [`mapboxgl-qml`](https://github.com/rinigus/mapbox-gl-qml) package from
-[Chum](https://openrepos.net/content/chum). Without it, Matka still starts
+[Chum](https://openrepos.net/content/chum). Without it, Driver still starts
 and shows a "map unavailable" placeholder.
 
 ```bash
