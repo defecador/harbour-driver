@@ -57,6 +57,7 @@ private slots:
     void navigator_stopIsReachedAndTripContinues();
     void navigator_offRouteWaitsBeforeRerouting();
     void navigator_rerouteRespectsCooldownAndPerTripLimit();
+    void navigator_slightlyOffRouteWaitsLonger();
 
     // --- Navigator transit -------------------------------------------
     void parser_stopExpectedMsEqualsTime();
@@ -651,19 +652,40 @@ void TstDriver::navigator_offRouteWaitsBeforeRerouting()
     int rerouteCalls = 0;
     nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
 
-    // 100m off the route (car's off-route threshold is 35m): off-route
-    // immediately, but a reroute must wait for 8 continuous seconds.
+    // 100m off the route (car's off-route threshold is 35m, so this is far
+    // off): off-route immediately, but a reroute must wait 2 continuous seconds.
     const auto off = northOfRouteStart(100);
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
     QVERIFY(nav.offRoute());
     QCOMPARE(rerouteCalls, 0);
 
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 4000);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1500);
     QCOMPARE(rerouteCalls, 0);
 
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 9000);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2500);
     QCOMPARE(rerouteCalls, 1);
     QCOMPARE(nav.rerouteCount(), 1);
+}
+
+void TstDriver::navigator_slightlyOffRouteWaitsLonger()
+{
+    const auto itinerary = makeItinerary(QStringLiteral("car"),
+            {onTestRoute(0), onTestRoute(100000)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 60, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    Navigator nav(nullptr, nullptr);
+    nav.start(itinerary, destOf(onTestRoute(100000)));
+    int rerouteCalls = 0;
+    nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
+
+    // 50m off: beyond the 35m threshold but not "far", so 4s are needed.
+    const auto off = northOfRouteStart(50);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
+    QVERIFY(nav.offRoute());
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 3000);
+    QCOMPARE(rerouteCalls, 0);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 4500);
+    QCOMPARE(rerouteCalls, 1);
 }
 
 void TstDriver::navigator_rerouteRespectsCooldownAndPerTripLimit()
@@ -679,20 +701,20 @@ void TstDriver::navigator_rerouteRespectsCooldownAndPerTripLimit()
     nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
     const auto off = northOfRouteStart(100);
 
-    // First reroute fires once 8s off-route have passed.
+    // First reroute fires once 2s far off-route have passed.
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 8000);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2000);
     QCOMPARE(rerouteCalls, 1);
 
-    // Still off-route 100ms later: the 30s cooldown blocks a second attempt.
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 8100);
+    // Still off-route 100ms later: the 10s cooldown blocks a second attempt.
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2100);
     QCOMPARE(rerouteCalls, 1);
 
-    // 15 attempts total is the per-trip cap; keep going every 30s past that
+    // 15 attempts total is the per-trip cap; keep going every 10s past that
     // and confirm it stops incrementing at 15.
-    qint64 ts = 8000;
+    qint64 ts = 2000;
     for (int i = 0; i < 20; ++i) {
-        ts += 30000;
+        ts += 10000;
         nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, ts);
     }
     QCOMPARE(rerouteCalls, 15);

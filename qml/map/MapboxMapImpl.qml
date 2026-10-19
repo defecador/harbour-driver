@@ -163,7 +163,7 @@ Item {
                 "type": "line",
                 "source": "navTraveled",
                 "layout": {"line-cap": "round", "line-join": "round"},
-                "paint": {"line-color": color, "line-width": 5.0}
+                "paint": {"line-color": color, "line-width": 15.0}
             })
             root._traveledAdded = true
         } else {
@@ -185,10 +185,10 @@ Item {
             "type": "line",
             "source": sourceId,
             "layout": {"line-cap": "round", "line-join": "round"},
-            "paint": {"line-color": "#ffffff", "line-width": selected ? 9.0 : 6.0,
+            "paint": {"line-color": "#ffffff", "line-width": selected ? 21.0 : 14.0,
                       "line-opacity": selected ? 1.0 : 0.85}
         })
-        var paint = {"line-color": color, "line-width": selected ? 5.0 : 4.0}
+        var paint = {"line-color": color, "line-width": selected ? 15.0 : 10.0}
         if (dashed) paint["line-dasharray"] = [2, 2]
         map.addLayer(sourceId, {
             "type": "line",
@@ -266,7 +266,7 @@ Item {
         center: QtPositioning.coordinate(52.52, 13.405)
         zoomLevel: root.zoomLevel
         minimumZoomLevel: 2
-        maximumZoomLevel: 19
+        maximumZoomLevel: 21.5
         onZoomLevelChanged: root.zoomLevel = zoomLevel
         Component.onCompleted: root.ready = true
 

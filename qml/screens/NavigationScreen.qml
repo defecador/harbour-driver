@@ -32,7 +32,7 @@ Item {
     property bool povControls: false
     property real povZoom: 18.3
     readonly property real povZoomMin: 16.8
-    readonly property real povZoomMax: 19.5
+    readonly property real povZoomMax: 21.0
     property bool muted: false
 
     Haptics { id: haptics }

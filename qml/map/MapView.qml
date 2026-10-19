@@ -89,7 +89,7 @@ Item {
         if (selectedIndex >= 0 && selectedIndex < itineraries.length) {
             var it = itineraries[selectedIndex]
             var dashed = it.mode === "pedestrian"
-            mapLoader.item.addRoute("routeSel", it.coordinates, "" + M.primary, true, dashed)
+            mapLoader.item.addRoute("routeSel", it.coordinates, "" + M.routeLine, true, dashed)
         }
     }
 

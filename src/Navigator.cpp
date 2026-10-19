@@ -13,10 +13,13 @@
 
 namespace {
 // Staying more than this far from the route for this long triggers a reroute.
-constexpr qint64 kOffRouteDelayMs = 8000;
+constexpr qint64 kOffRouteDelayMs = 4000;
+// Clearly far from the route (well beyond GPS noise): react sooner.
+constexpr qint64 kFarOffRouteDelayMs = 2000;
+constexpr qreal kFarOffRouteFactor = 2.5;
 // Reroute attempts are throttled so a noisy GPS fix can't burn through the
-// HERE routing quota: at most once every 30s, at most 15 times per trip.
-constexpr qint64 kRerouteCooldownMs = 30000;
+// HERE routing quota: at most once every 10s, at most 15 times per trip.
+constexpr qint64 kRerouteCooldownMs = 10000;
 constexpr int kRerouteMaxCount = 15;
 // Within this radius of the final maneuver, the trip counts as arrived.
 constexpr qreal kArrivalRadius = 30.0;
@@ -461,7 +464,9 @@ void Navigator::updatePosition(double lat, double lng, double accuracyM,
 
     checkAnnouncements(ts);
     checkOffRoute(bestPerp, ts);
-    if (m_offRoute && !m_rerouting && m_offRouteSinceMs >= 0 && ts - m_offRouteSinceMs >= kOffRouteDelayMs)
+    const qint64 delay = bestPerp > kFarOffRouteFactor * offRouteThreshold(m_lastAccuracy)
+            ? kFarOffRouteDelayMs : kOffRouteDelayMs;
+    if (m_offRoute && !m_rerouting && m_offRouteSinceMs >= 0 && ts - m_offRouteSinceMs >= delay)
         maybeReroute(lat, lng, headingDeg, ts);
 }
 

@@ -37,6 +37,8 @@ QtObject {
     readonly property color traffic: "#e8710a"
     readonly property color good: "#1e8e3e"
     readonly property color bad: "#d93025"
+    // Selected route line on the map.
+    readonly property color routeLine: dark ? "#b57bff" : "#7a22d4"
     readonly property color routeAlt: sign ? "#bdb8a8" : quiet ? "#2e414d" : dark ? "#55565c" : "#c4c7cc"
 
     // Accent for buttons and selected tabs: sign-yellow by day, the warm

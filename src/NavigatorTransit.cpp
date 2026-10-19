@@ -241,7 +241,7 @@ void Navigator::updateTransitPosition(double lat, double lng, double accuracyM,
         }
         checkAnnouncements(tsMs);
         checkOffRoute(perp, tsMs);
-        if (m_offRoute && !m_rerouting && m_offRouteSinceMs >= 0 && tsMs - m_offRouteSinceMs >= 8000)
+        if (m_offRoute && !m_rerouting && m_offRouteSinceMs >= 0 && tsMs - m_offRouteSinceMs >= 4000)
             maybeRerouteWalkLeg(lat, lng, tsMs);
         return;
     }
@@ -455,7 +455,7 @@ void Navigator::maybeRerouteWalkLeg(double lat, double lng, qint64 tsMs)
 {
     if (m_rerouteCount >= 15)
         return;
-    if (m_lastRerouteMs >= 0 && tsMs - m_lastRerouteMs < 30000)
+    if (m_lastRerouteMs >= 0 && tsMs - m_lastRerouteMs < 10000)
         return;
     if (m_legIndex < 0 || m_legIndex >= m_legs.size())
         return;
