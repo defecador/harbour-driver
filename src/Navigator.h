@@ -111,7 +111,7 @@ public:
         return m_remainingSeconds;
     }
     QString arrivalText() const;
-    qreal traveledFraction() const { return m_totalLength > 0 ? qBound(0.0, m_traveled / m_totalLength, 1.0) : 0.0; }
+    qreal traveledFraction() const { return m_totalLength > 0 ? qBound(qreal(0), m_traveled / m_totalLength, qreal(1)) : 0.0; }
 
     bool offRoute() const { return m_offRoute; }
     bool rerouting() const { return m_rerouting; }

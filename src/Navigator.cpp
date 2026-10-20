@@ -307,20 +307,20 @@ void Navigator::updateDerivedProperties()
         return;
 
     const qreal curDist = m_maneuvers[m_stepIndex].distanceAlong;
-    m_distanceToManeuver = qMax(0.0, curDist - m_traveled);
+    m_distanceToManeuver = qMax(qreal(0), curDist - m_traveled);
 
     m_hasThen = m_stepIndex + 1 < m_maneuvers.size()
             && (m_maneuvers[m_stepIndex + 1].distanceAlong - curDist) < kThenPreviewGap;
 
     const qreal prevDist = m_stepIndex > 0 ? m_maneuvers[m_stepIndex - 1].distanceAlong : 0.0;
     const qreal segLen = curDist - prevDist;
-    const qreal fraction = segLen > 1e-6 ? qBound(0.0, (m_traveled - prevDist) / segLen, 1.0) : 1.0;
+    const qreal fraction = segLen > 1e-6 ? qBound(qreal(0), (m_traveled - prevDist) / segLen, qreal(1)) : 1.0;
     const int prevDuration = m_stepIndex > 0 ? m_maneuvers[m_stepIndex - 1].duration : 0;
     qreal remaining = prevDuration * (1.0 - fraction);
     for (int k = m_stepIndex; k < m_maneuvers.size() - 1; ++k)
         remaining += m_maneuvers[k].duration;
     m_remainingSeconds = int(remaining + 0.5);
-    m_remainingDistance = qMax(0.0, m_totalLength - m_traveled);
+    m_remainingDistance = qMax(qreal(0), m_totalLength - m_traveled);
 
     emit maneuverChanged();
 }
@@ -334,7 +334,7 @@ void Navigator::checkAnnouncements(qint64 /*tsMs*/)
     qreal farM, nearM, nowM;
     if (m_mode == QStringLiteral("car")) {
         if (m_lastSpeed * 3.6 > 80.0) {
-            farM = 1500; nearM = 400; nowM = qMax(30.0, 5.0 * m_lastSpeed);
+            farM = 1500; nearM = 400; nowM = qMax(qreal(30), qreal(5) * qreal(m_lastSpeed));
         } else {
             farM = 300; nearM = 100; nowM = 30;
         }
@@ -360,7 +360,7 @@ void Navigator::checkAnnouncements(qint64 /*tsMs*/)
 qreal Navigator::offRouteThreshold(qreal accuracyM) const
 {
     const qreal base = m_mode == QStringLiteral("car") ? 35.0 : 25.0;
-    return qMax(base, 1.5 * accuracyM);
+    return qMax(base, qreal(1.5) * accuracyM);
 }
 
 void Navigator::checkOffRoute(qreal perpDistance, qint64 tsMs)
@@ -389,7 +389,7 @@ qreal Navigator::matchPositionToRoute(double lat, double lng)
     // against and a stale match can't jump to a far-away, coincidentally
     // close bit of the route (e.g. a road the route crosses twice).
     const qreal lastDist = m_cumDist.isEmpty() ? 0 : m_cumDist[qBound(0, m_lastMatchPoint, m_cumDist.size() - 1)];
-    const qreal winLo = qMax(0.0, lastDist - 50.0);
+    const qreal winLo = qMax(qreal(0), lastDist - 50);
     const qreal winHi = lastDist + 600.0;
 
     int loIdx = 0, hiIdx = m_coords.size() - 2;
