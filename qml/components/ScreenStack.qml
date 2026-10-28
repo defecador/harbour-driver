@@ -4,7 +4,13 @@ import QtQuick 2.6
 // Qt 5.6 has no Controls 2 StackView, so this is built from Qt.createComponent directly.
 Item {
     id: root
-    anchors.fill: parent
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    anchors.left: parent.left
+    // 0 = the whole parent; a positive width makes the stack a side panel
+    // (wide windows keep the map visible beside the screens).
+    property real panelWidth: 0
+    width: panelWidth > 0 ? panelWidth : parent.width
     property int depth: 0
     property var _stack: []
 
@@ -15,8 +21,9 @@ Item {
             return null
         }
         var item = comp.createObject(root, props || {})
-        item.width = root.width
-        item.height = root.height
+        // Bound, so a resized window (split screen, rotation) re-flows live.
+        item.width = Qt.binding(function() { return root.width })
+        item.height = Qt.binding(function() { return root.height })
         item.x = root.width
         item.z = _stack.length
         _stack.push(item)

@@ -10,6 +10,7 @@ DEFINES += APP_VERSION=\\\"$${VERSION}\\\"
 
 SOURCES += \
     src/main.cpp \
+    src/AppTools.cpp \
     src/AppSettings.cpp \
     src/HereClient.cpp \
     src/HereUrls.cpp \
@@ -22,6 +23,7 @@ SOURCES += \
     src/NavigatorTransit.cpp
 
 HEADERS += \
+    src/AppTools.h \
     src/AppSettings.h \
     src/HereClient.h \
     src/HereUrls.h \

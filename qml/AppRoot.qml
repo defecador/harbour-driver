@@ -12,6 +12,14 @@ Item {
     id: root
     anchors.fill: parent
 
+    // Wide windows (a tablet in landscape) lay the screens out as a left
+    // panel beside the map; narrow ones (phone, or half of a split screen)
+    // keep the bottom sheet and full-screen pages.
+    readonly property bool wide: width >= 840 * M.dp
+    readonly property real panelW: Math.min(440 * M.dp, width * 0.42)
+    readonly property real mapLeftInset: wide && !navItem ? panelW : 0
+    onMapLeftInsetChanged: mapView.setMargins(mapLeftInset, 0, 0, 0)
+
     function meAsPlace() {
         return {
             "title": qsTr("Your location"),
@@ -333,7 +341,7 @@ Item {
         anchors.topMargin: M.spacingM
         anchors.rightMargin: M.spacingM
         z: 20
-        visible: sheet.sheetState !== "full" && stack.depth === 0
+        visible: (root.wide || sheet.sheetState !== "full") && stack.depth === 0
         locating: mapView.hasFix
         onLayersClicked: root.openLayers()
         onLocateClicked: mapView.centerOnMe()
@@ -342,6 +350,8 @@ Item {
     BottomSheet {
         id: sheet
         z: 10
+        sidePanel: root.wide
+        panelWidth: root.panelW
         // Room for the saved-places row when there is one.
         peekHeight: (172 + (AppSettings.savedPlaces.length > 0 ? 52 : 0)) * M.dp
         visible: stack.depth === 0
@@ -357,6 +367,7 @@ Item {
     ScreenStack {
         id: stack
         z: 30
+        panelWidth: root.mapLeftInset
     }
 
     Snackbar {
@@ -366,7 +377,8 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: M.spacingM
-        anchors.bottomMargin: (stack.depth === 0 ? sheet.peekHeight : 0) + M.spacingM
+        anchors.leftMargin: root.mapLeftInset + M.spacingM
+        anchors.bottomMargin: (stack.depth === 0 && !root.wide ? sheet.peekHeight : 0) + M.spacingM
     }
 
     Connections {
@@ -472,6 +484,19 @@ Item {
                 stop()
             }
         }
+    }
+
+    // Android back key: closes the top screen like its own close button.
+    // Returns false at the root, where the key should leave the app.
+    function goBack() {
+        if (stack.depth === 0)
+            return false
+        var top = stack._stack[stack._stack.length - 1]
+        if (top && top.closed)
+            top.closed()
+        else
+            stack.pop()
+        return true
     }
 
     Component.onCompleted: {

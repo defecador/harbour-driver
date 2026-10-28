@@ -39,6 +39,34 @@ sfdk -c target=SailfishOS-5.1.0.11EA-aarch64 build
 sfdk -c target=SailfishOS-5.1.0.11EA-aarch64 deploy --sdk --all
 ```
 
+### Android (tablet and phone)
+
+The same source builds as an Android app with Qt 6.7 and
+[MapLibre Native Qt](https://github.com/maplibre/maplibre-native-qt) (the
+Sailfish package above is unaffected). The window is resizable, so it works in
+split screen: wide landscape windows show a left panel beside the map, narrow
+ones use the phone layout.
+
+Needs: JDK 17, Android SDK (platform 34, build-tools 34, NDK 26.1.10909125),
+Qt 6.7.3 for `gcc_64` and Android (`aqtinstall`, with the `qtpositioning`,
+`qtlocation`, `qt5compat` and `qtshadertools` modules), the prebuilt MapLibre
+Native Qt 3.0.0 for Qt 6.7.3 Android, and
+[KDAB/android_openssl](https://github.com/KDAB/android_openssl). `tools/android-env.sh`
+shows the paths it expects.
+
+```bash
+. tools/android-env.sh
+~/Qt/6.7.3/android_arm64_v8a/bin/qt-cmake -S . -B build-android -DQT_HOST_PATH=$HOME/Qt/6.7.3/gcc_64 \
+    -DCMAKE_BUILD_TYPE=Release -DQT_ANDROID_SIGN_APK=ON    # needs QT_ANDROID_KEYSTORE_* set
+cmake --build build-android --target apk
+```
+
+Use `android_x86_64` instead of `android_arm64_v8a` (and no signing) for an
+emulator build. The QML for Qt 6 is generated from `qml/` by
+`tools/gen_qt6_qml.py`, with Android-only replacements in `android/qml/`
+(map, window, keep-awake/vibration/notifications). On Android the HERE key
+lives in `files/settings/settings.conf` inside the app's data folder.
+
 ### Developer flags
 
 - `--fixtures` — serve HERE API responses from local JSON files in

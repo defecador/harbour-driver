@@ -3,6 +3,12 @@
 #include <QLocale>
 #include <QStandardPaths>
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+static const Qt::SplitBehaviorFlags SkipEmpty = Qt::SkipEmptyParts;
+#else
+static const QString::SplitBehavior SkipEmpty = QString::SkipEmptyParts;
+#endif
+
 // Stored under ~/.config/org.driver/Driver/ which the Sailjail sandbox allows.
 AppSettings::AppSettings(QObject *parent)
     : QObject(parent)
@@ -160,7 +166,7 @@ QString AppSettings::lang() const
     // so only the language and the first following subtag are kept.
     QString l = QLocale::system().name();
     l.replace(QLatin1Char('_'), QLatin1Char('-'));
-    const QStringList parts = l.split(QLatin1Char('-'), QString::SkipEmptyParts);
+    const QStringList parts = l.split(QLatin1Char('-'), SkipEmpty);
     const QString language = parts.value(0).toLower();
     if (language.length() != 2)
         return QStringLiteral("en-GB");

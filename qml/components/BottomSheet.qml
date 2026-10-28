@@ -9,9 +9,13 @@ import "../theme"
 Item {
     id: root
     anchors.left: parent.left
-    anchors.right: parent.right
+    anchors.right: sidePanel ? undefined : parent.right
+    width: sidePanel ? panelWidth : parent.width
     height: parent.height
 
+    // Wide windows: a full-height panel on the left instead of a bottom sheet.
+    property bool sidePanel: false
+    property real panelWidth: 420 * M.dp
     property real peekHeight: 172 * M.dp
     property real halfFraction: 0.55
     property real fullFraction: 0.92
@@ -40,7 +44,7 @@ Item {
         sheetState = s
     }
 
-    y: parent.height - sheetHeight
+    y: sidePanel ? 0 : parent.height - sheetHeight
 
     RectangularGlow {
         anchors.left: parent.left
@@ -68,6 +72,7 @@ Item {
     MouseArea {
         id: drag
         anchors.fill: parent
+        enabled: !root.sidePanel
         property bool dragging: false
         property real startGlobalY: 0
         property real startHeight: 0

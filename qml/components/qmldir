@@ -18,3 +18,4 @@ ScreenStack 1.0 ScreenStack.qml
 LineBadge 1.0 LineBadge.qml
 Divider 1.0 Divider.qml
 Haptics 1.0 Haptics.qml
+NavSystem 1.0 NavSystem.qml

@@ -1,6 +1,4 @@
 import QtQuick 2.6
-import Nemo.KeepAlive 1.1
-import Nemo.Notifications 1.0
 import "../theme"
 import "../components"
 import "../theme/Fmt.js" as Fmt
@@ -37,52 +35,26 @@ Item {
 
     Haptics { id: haptics }
 
-    // Lets the CPU, the 1s transit tick and GPS keep running with the
-    // screen off (DisplayBlanking below only covers the display itself,
-    // and is deliberately turned off during a transit ride — see onState/
-    // onAnnounce — so a long ride doesn't burn battery lighting the screen).
-    KeepAlive {
-        enabled: Navigator.state === "guiding" || Navigator.state === "waitingForGps" || Navigator.state === "rerouting"
-    }
-
-    // Published for alight/alightNow/missed so a transit rider with the
-    // screen off (or the app minimised) still gets woken up in time.
-    Notification {
-        id: transitNotification
-        appName: "Driver"
-        category: "x-driver.transit"
-        urgency: Notification.Critical
+    // Keeps the CPU, the 1s transit tick and GPS running with the screen off,
+    // holds the display on when it should be, and publishes the transit
+    // alerts (see components/NavSystem.qml, platform specific). While riding
+    // transit the screen may sleep (the choice made for this feature): the
+    // alight/missed notification wakes the rider back up in time.
+    NavSystem {
+        id: navSystem
+        active: Navigator.state === "guiding" || Navigator.state === "waitingForGps"
+                || Navigator.state === "rerouting"
+        screenOn: active && (Navigator.mode !== "transit" || Navigator.transitPhase !== "ride")
     }
 
     Connections {
         target: Navigator
         onAnnounce: {
             if (!root.muted && AppSettings.vibration) haptics.vibrate()
-            if (kind === "alight" || kind === "alightNow" || kind === "missed") {
-                transitNotification.previewSummary = text
-                transitNotification.summary = text
-                transitNotification.publish()
-            }
+            if (kind === "alight" || kind === "alightNow" || kind === "missed")
+                navSystem.notify(text)
         }
-        onStateChanged: root._updateBlanking()
-        onTransitChanged: root._updateBlanking()
     }
-
-    // "offRoute" is not one of Navigator's state values (it's the separate
-    // `offRoute` bool, true only while still within the guiding state) —
-    // keep the screen on through all of these. While riding transit the
-    // screen may sleep (the choice made for this feature): KeepAlive above
-    // keeps guidance running regardless, and the alight/missed notification
-    // wakes the rider back up in time. Re-run on both stateChanged (car/
-    // walk/bike, and transit's own idle/waitingForGps/arrived/error) and
-    // transitChanged (wait/ride/alight don't touch state at all).
-    function _updateBlanking() {
-        var onFoot = Navigator.mode !== "transit" || Navigator.transitPhase !== "ride"
-        DisplayBlanking.preventBlanking = onFoot && (Navigator.state === "guiding"
-                || Navigator.state === "waitingForGps" || Navigator.state === "rerouting")
-    }
-
-    Component.onDestruction: DisplayBlanking.preventBlanking = false
 
     // --- Simulated GPS (dev/testing only) -----------------------------
     // Walks the planned route's own coordinate list at a plausible speed so
@@ -132,7 +104,6 @@ Item {
     }
 
     Component.onCompleted: {
-        root._updateBlanking()
         if (root.simulate)
             root._simSetup()
     }
