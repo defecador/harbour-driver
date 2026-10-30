@@ -6,6 +6,57 @@
                 {
                     "type": "vehicle",
                     "polyline": "BF-kygKg77xChDpUpF3iB3YriFhB9GAA",
+                    "spans": [
+                        {
+                            "offset": 0,
+                            "speedLimit": 13.89,
+                            "dynamicSpeedInfo": {
+                                "trafficSpeed": 12.0,
+                                "baseSpeed": 13.0
+                            },
+                            "countryCode": "DEU",
+                            "segmentRef": "$0::1001:$1:1001#+0..1",
+                            "tollSystems": [
+                                0
+                            ]
+                        },
+                        {
+                            "offset": 1,
+                            "speedLimit": 13.89,
+                            "dynamicSpeedInfo": {
+                                "trafficSpeed": 2.0,
+                                "baseSpeed": 13.0
+                            },
+                            "countryCode": "DEU",
+                            "segmentRef": "$0::1002:$1:1002#+0..1",
+                            "tollSystems": [
+                                0
+                            ]
+                        },
+                        {
+                            "offset": 2,
+                            "speedLimit": 13.89,
+                            "dynamicSpeedInfo": {
+                                "trafficSpeed": 7.0,
+                                "baseSpeed": 13.0
+                            },
+                            "countryCode": "DEU",
+                            "segmentRef": "$0::1003:$1:1003#+0..1"
+                        },
+                        {
+                            "offset": 3,
+                            "speedLimit": 8.33,
+                            "dynamicSpeedInfo": {
+                                "trafficSpeed": 12.5,
+                                "baseSpeed": 13.0
+                            },
+                            "countryCode": "POL",
+                            "segmentRef": "$0::2001:$1:2001#-0..1",
+                            "tollSystems": [
+                                1
+                            ]
+                        }
+                    ],
                     "departure": {
                         "time": "2026-09-28T10:00:00+02:00",
                         "place": {
@@ -35,7 +86,7 @@
                         {
                             "action": "depart",
                             "direction": "",
-                            "instruction": "Head west on Karl-Liebknecht-Straße",
+                            "instruction": "Head west on Karl-Liebknecht-Stra\u00dfe",
                             "length": 350,
                             "duration": 60,
                             "offset": 0
@@ -43,15 +94,15 @@
                         {
                             "action": "turn",
                             "direction": "left",
-                            "instruction": "Turn left onto Spandauer Straße",
+                            "instruction": "Turn left onto Spandauer Stra\u00dfe",
                             "length": 600,
                             "duration": 90,
                             "offset": 1
                         },
                         {
-                            "action": "continue",
+                            "action": "exit",
                             "direction": "",
-                            "instruction": "Continue onto Unter den Linden",
+                            "instruction": "Take exit 10 toward Magdeburg/Leipzig/Potsdam onto A115 (AVUS). Go for 2.8 km.",
                             "length": 2800,
                             "duration": 780,
                             "offset": 2
@@ -71,6 +122,14 @@
                             "length": 0,
                             "duration": 0,
                             "offset": 4
+                        }
+                    ],
+                    "tollSystems": [
+                        {
+                            "name": "Fixture Maut"
+                        },
+                        {
+                            "name": "Fixture Op\u0142ata"
                         }
                     ]
                 }
@@ -111,7 +170,7 @@
                         {
                             "action": "depart",
                             "direction": "",
-                            "instruction": "Head south on Alexanderstraße",
+                            "instruction": "Head south on Alexanderstra\u00dfe",
                             "length": 400,
                             "duration": 70,
                             "offset": 0
@@ -119,7 +178,7 @@
                         {
                             "action": "turn",
                             "direction": "right",
-                            "instruction": "Turn right onto Leipziger Straße",
+                            "instruction": "Turn right onto Leipziger Stra\u00dfe",
                             "length": 3200,
                             "duration": 900,
                             "offset": 1
@@ -127,7 +186,7 @@
                         {
                             "action": "turn",
                             "direction": "right",
-                            "instruction": "Turn right onto Ebertstraße",
+                            "instruction": "Turn right onto Ebertstra\u00dfe",
                             "length": 1300,
                             "duration": 350,
                             "offset": 2

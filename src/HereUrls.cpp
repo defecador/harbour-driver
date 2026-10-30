@@ -54,7 +54,7 @@ QUrl HereUrls::revgeocode(const QString &key, LatLng at, const QString &lang)
 
 QUrl HereUrls::route(const QString &key, const QString &mode, LatLng from, LatLng to,
                      const QString &lang, const QString &units, int alternatives, int courseDegrees,
-                     const QVector<LatLng> &vias, const QString &routingMode)
+                     const QVector<LatLng> &vias, const QString &routingMode, bool withTolls)
 {
     QUrlQuery q;
     q.addQueryItem(QStringLiteral("transportMode"), mode);
@@ -71,9 +71,15 @@ QUrl HereUrls::route(const QString &key, const QString &mode, LatLng from, LatLn
     if (!routingMode.isEmpty())
         q.addQueryItem(QStringLiteral("routingMode"), routingMode);
     q.addQueryItem(QStringLiteral("destination"), coord(to));
-    q.addQueryItem(QStringLiteral("return"), QStringLiteral("polyline,summary,actions,instructions,travelSummary"));
+    const bool car = mode == QLatin1String("car");
+    q.addQueryItem(QStringLiteral("return"), QStringLiteral("polyline,summary,actions,instructions,travelSummary")
+                   + (car && withTolls ? QStringLiteral(",tolls") : QString()));
     if (alternatives > 0)
         q.addQueryItem(QStringLiteral("alternatives"), QString::number(alternatives));
+    // Per-span traffic speed, so the route line can show slow stretches.
+    if (mode == QLatin1String("car"))
+        q.addQueryItem(QStringLiteral("spans"), QStringLiteral("dynamicSpeedInfo,speedLimit")
+                       + (withTolls ? QStringLiteral(",countryCode,tollSystems,segmentRef") : QString()));
     if (mode != QLatin1String("car"))
         q.addQueryItem(QStringLiteral("departureTime"), QStringLiteral("any"));
     q.addQueryItem(QStringLiteral("lang"), lang);
@@ -152,6 +158,18 @@ QString HereUrls::trafficTiles(const QString &key, bool night)
 {
     return QStringLiteral("https://traffic.maps.hereapi.com/v3/flow/mc/{z}/{x}/{y}/png8?style=%1&size=512&ppi=400&apiKey=%2")
             .arg(night ? QStringLiteral("explore.night") : QStringLiteral("explore.day"), key);
+}
+
+QByteArray HereUrls::avoidSegmentsBody(const QStringList &segments)
+{
+    QJsonArray arr;
+    for (const QString &s : segments)
+        arr.append(s);
+    QJsonObject avoid;
+    avoid[QStringLiteral("segments")] = arr;
+    QJsonObject root;
+    root[QStringLiteral("avoid")] = avoid;
+    return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
 QString HereUrls::redact(const QString &text)

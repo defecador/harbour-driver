@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "generated": "2025-01-01",
+  "packs": [
+    {
+      "id": "germany",
+      "name": "Germany",
+      "iso": "DE",
+      "bytes": 4930000,
+      "count": 410000,
+      "date": 20250101,
+      "sha256": "",
+      "continent": "Europe"
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "iso": "ES",
+      "bytes": 1980000,
+      "count": 165000,
+      "date": 20250101,
+      "sha256": "",
+      "continent": "Europe"
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "iso": "FR",
+      "bytes": 3400000,
+      "count": 283000,
+      "date": 20250101,
+      "sha256": "",
+      "continent": "Europe"
+    },
+    {
+      "id": "switzerland",
+      "name": "Switzerland",
+      "iso": "CH",
+      "bytes": 310000,
+      "count": 25800,
+      "date": 20250101,
+      "sha256": "",
+      "continent": "Europe"
+    },
+    {
+      "id": "test",
+      "name": "Test area",
+      "iso": "",
+      "bytes": 124,
+      "count": 6,
+      "date": 20250102,
+      "sha256": "",
+      "continent": "Europe"
+    },
+    {
+      "id": "chile",
+      "name": "Chile",
+      "iso": "CL",
+      "continent": "South America",
+      "bytes": 410000,
+      "count": 34000,
+      "date": 20250101,
+      "sha256": ""
+    }
+  ]
+}

@@ -24,8 +24,12 @@ public:
 
     // Returns the reply so callers can abort it; null in fixture mode.
     QPointer<QNetworkReply> get(const QUrl &url, const QString &fixture, Callback cb);
+    // Same with a JSON body (long avoid lists don't fit in a URL).
+    QPointer<QNetworkReply> post(const QUrl &url, const QByteArray &json, const QString &fixture, Callback cb);
 
 private:
+    QPointer<QNetworkReply> send(const QUrl &url, const QByteArray &body, bool post, const QString &fixture, Callback cb);
+
     QNetworkAccessManager m_nam;
     QString m_fixtureDir;
 };

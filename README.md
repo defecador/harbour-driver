@@ -67,12 +67,35 @@ emulator build. The QML for Qt 6 is generated from `qml/` by
 (map, window, keep-awake/vibration/notifications). On Android the HERE key
 lives in `files/settings/settings.conf` inside the app's data folder.
 
+### Road alerts and sign packs
+
+Free drive (the map follows you with no destination) and the stop sign,
+give-way sign and speed camera warnings work from offline data: one small
+pack per country, built from OpenStreetMap (`tools/signpacks/`). Settings >
+*Sign data by country* downloads the packs you choose from the `signpacks`
+release of this repository; warnings need at least one downloaded country.
+
+- `tools/signpacks/build_pack.py <extract.osm.pbf> <out.drsp>` builds a pack
+  (needs `pip install osmium`) and `build_limits.py` the matching `.drsl`
+  file with the posted speed limits of roads (the limit sign in free drive;
+  while navigating, the limits come from the HERE route); `test_build_*.py`
+  check them on a tiny map.
+- `.github/workflows/signpacks.yml` builds every country (US by state) from the
+  Geofabrik extracts and publishes the packs plus `index.json` as release
+  assets (manual run, monthly, or a `signpacks-build*` tag).
+- Camera alerts are off by default; using them while driving is banned in
+  some countries (e.g. Germany, Switzerland). Warning voices are recorded by
+  the user in Settings (Android only) and play with audio ducking.
+- Data (c) OpenStreetMap contributors, ODbL.
+
 ### Developer flags
 
 - `--fixtures` — serve HERE API responses from local JSON files in
   `fixtures/` instead of the network, so the UI can be exercised without a
   key or connectivity.
-- `--dev-screen=<name>` — open directly on a given screen with sample data.
+- `--dev-screen=<name>` — open directly on a given screen with sample data
+  (`freedrive` drives the sample route with no destination, `signdata` opens
+  the country download list).
 - `--dev-grab=<path.png>` — render once, save a screenshot, and quit.
 - `--dev-dark` — force the dark theme regardless of the ambience.
 

@@ -13,14 +13,14 @@
 
 namespace {
 // Staying more than this far from the route for this long triggers a reroute.
-constexpr qint64 kOffRouteDelayMs = 4000;
-// Clearly far from the route (well beyond GPS noise): react sooner.
-constexpr qint64 kFarOffRouteDelayMs = 2000;
-constexpr qreal kFarOffRouteFactor = 2.5;
+constexpr qint64 kOffRouteDelayMs = 1500;
+// Clearly far from the route (well beyond GPS noise): react on the next fix.
+constexpr qint64 kFarOffRouteDelayMs = 500;
+constexpr qreal kFarOffRouteFactor = 2.0;
 // Reroute attempts are throttled so a noisy GPS fix can't burn through the
-// HERE routing quota: at most once every 10s, at most 15 times per trip.
-constexpr qint64 kRerouteCooldownMs = 10000;
-constexpr int kRerouteMaxCount = 15;
+// HERE routing quota: at most once every 3s, at most 30 times per trip.
+constexpr qint64 kRerouteCooldownMs = 3000;
+constexpr int kRerouteMaxCount = 30;
 // Within this radius of the final maneuver, the trip counts as arrived.
 constexpr qreal kArrivalRadius = 30.0;
 // Within this radius of a user-added stop, the stop counts as reached.
@@ -103,6 +103,8 @@ QString Navigator::arrivalText() const
 void Navigator::rebuildFromItinerary(const QVariantMap &itinerary)
 {
     m_itinerary = itinerary;
+    // Toll roads the user chose to avoid; kept for every reroute of this trip.
+    m_avoidSegments = itinerary.value(QStringLiteral("avoidSegments")).toStringList();
     m_mode = itinerary.value(QStringLiteral("mode")).toString();
     m_variant = itinerary.value(QStringLiteral("variant")).toString();
 
@@ -165,6 +167,8 @@ void Navigator::resetProgressState()
     m_stepIndex = m_maneuvers.size() > 1 ? 1 : qMax(0, m_maneuvers.size() - 1);
     m_lastMatchPoint = 0;
     m_traveled = 0;
+    m_snapped = false;
+    m_snappedHeading = 0;
     m_distanceToManeuver = 0;
     m_hasThen = false;
     m_remainingDistance = m_totalLength;
@@ -359,8 +363,7 @@ void Navigator::checkAnnouncements(qint64 /*tsMs*/)
 
 qreal Navigator::offRouteThreshold(qreal accuracyM) const
 {
-    const qreal base = m_mode == QStringLiteral("car") ? 35.0 : 25.0;
-    return qMax(base, qreal(1.5) * accuracyM);
+    return qMax(qreal(25.0), qreal(1.5) * accuracyM);
 }
 
 void Navigator::checkOffRoute(qreal perpDistance, qint64 tsMs)
@@ -407,6 +410,7 @@ qreal Navigator::matchPositionToRoute(double lat, double lng)
         hiIdx = loIdx;
 
     qreal bestPerp = -1, bestDistAlong = m_traveled;
+    double bestLat = lat, bestLng = lng;
     int bestSeg = m_lastMatchPoint;
     for (int i = loIdx; i <= hiIdx && i < m_coords.size() - 1; ++i) {
         const auto proj = NavGeo::projectOntoSegment(lat, lng,
@@ -415,10 +419,18 @@ qreal Navigator::matchPositionToRoute(double lat, double lng)
         if (bestPerp < 0 || proj.perpDistance < bestPerp) {
             bestPerp = proj.perpDistance;
             bestDistAlong = distAlong;
+            bestLat = proj.lat;
+            bestLng = proj.lng;
             bestSeg = i;
         }
     }
     m_lastMatchPoint = bestSeg;
+    m_snappedLat = bestLat;
+    m_snappedLng = bestLng;
+    // Zero-length segments (a duplicated last point) have no direction.
+    if (bestSeg >= 0 && bestSeg + 1 < m_coords.size() && m_cumDist[bestSeg + 1] - m_cumDist[bestSeg] > 0.5)
+        m_snappedHeading = NavGeo::bearingDegrees(m_coords[bestSeg].first, m_coords[bestSeg].second,
+                                                  m_coords[bestSeg + 1].first, m_coords[bestSeg + 1].second);
     // Progress never runs backwards: GPS jitter can project slightly behind
     // the last match, but the trip itself only moves forward.
     m_traveled = qMin(m_totalLength, qMax(m_traveled, bestDistAlong));
@@ -444,6 +456,8 @@ void Navigator::updatePosition(double lat, double lng, double accuracyM,
         return;
 
     const qreal bestPerp = matchPositionToRoute(lat, lng);
+    m_snapped = bestPerp >= 0 && bestPerp <= offRouteThreshold(m_lastAccuracy);
+    emit snappedChanged();
     advanceStepPointer();
     checkStopsReached(lat, lng);
     updateDerivedProperties();
@@ -523,9 +537,11 @@ void Navigator::maybeReroute(double lat, double lng, double headingDeg, qint64 t
                               0, courseArg, vias,
                               mode == QStringLiteral("bicycle") && variant == QStringLiteral("short")
                                       ? QStringLiteral("short") : QString());
+    const bool avoiding = !valhalla && mode == QStringLiteral("car") && !m_avoidSegments.isEmpty();
     const QString fixture = mode == QStringLiteral("bicycle") && !variant.isEmpty() && variant != QStringLiteral("fast")
-            ? QStringLiteral("route_bicycle_") + variant : QStringLiteral("route_") + mode;
-    m_client->get(url, fixture, [this, gen, mode, variant, valhalla](bool ok, const QJsonObject &json, const QString &) {
+            ? QStringLiteral("route_bicycle_") + variant
+            : avoiding ? QStringLiteral("route_car_avoid") : QStringLiteral("route_") + mode;
+    auto reroutedCb = [this, gen, mode, variant, valhalla](bool ok, const QJsonObject &json, const QString &) {
         if (gen != m_rerouteGeneration)
             return;
         QVariantList items = !ok ? QVariantList()
@@ -533,10 +549,15 @@ void Navigator::maybeReroute(double lat, double lng, double headingDeg, qint64 t
         if (!items.isEmpty()) {
             QVariantMap first = items.first().toMap();
             first[QStringLiteral("variant")] = variant;
+            first[QStringLiteral("avoidSegments")] = m_avoidSegments;
             items[0] = first;
         }
         applyRerouteResult(ok && !items.isEmpty(), items);
-    });
+    };
+    if (avoiding)
+        m_client->post(url, HereUrls::avoidSegmentsBody(m_avoidSegments), fixture, reroutedCb);
+    else
+        m_client->get(url, fixture, reroutedCb);
 }
 
 void Navigator::retryReroute()

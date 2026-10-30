@@ -53,6 +53,35 @@ void AppSettings::setVibration(bool on)
     emit vibrationChanged();
 }
 
+// Stop and give-way sign warnings (on by default) and speed camera alerts
+// (off by default: using them while driving is banned in some countries).
+bool AppSettings::warnSigns() const { return m_s.value(QStringLiteral("nav/warnSigns"), true).toBool(); }
+void AppSettings::setWarnSigns(bool on)
+{
+    if (on == warnSigns()) return;
+    m_s.setValue(QStringLiteral("nav/warnSigns"), on);
+    m_s.sync();
+    emit warnSignsChanged();
+}
+
+bool AppSettings::speedLimitSign() const { return m_s.value(QStringLiteral("nav/speedLimitSign"), true).toBool(); }
+void AppSettings::setSpeedLimitSign(bool on)
+{
+    if (on == speedLimitSign()) return;
+    m_s.setValue(QStringLiteral("nav/speedLimitSign"), on);
+    m_s.sync();
+    emit speedLimitSignChanged();
+}
+
+bool AppSettings::speedCameras() const { return m_s.value(QStringLiteral("nav/speedCameras"), false).toBool(); }
+void AppSettings::setSpeedCameras(bool on)
+{
+    if (on == speedCameras()) return;
+    m_s.setValue(QStringLiteral("nav/speedCameras"), on);
+    m_s.sync();
+    emit speedCamerasChanged();
+}
+
 // "new" = street-sign look by day, quiet look by night; "classic" = the original Material-style look.
 QString AppSettings::uiStyle() const { return m_s.value(QStringLiteral("ui/style"), QStringLiteral("new")).toString(); }
 void AppSettings::setUiStyle(const QString &s)

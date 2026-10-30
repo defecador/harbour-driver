@@ -29,8 +29,11 @@
 #include "HereClient.h"
 #include "HereUrls.h"
 #include "Navigator.h"
+#include "RoadAlerts.h"
 #include "SearchController.h"
+#include "SignPacks.h"
 #include "TripPlanner.h"
+#include "VoiceClips.h"
 
 
 int main(int argc, char *argv[])
@@ -82,6 +85,12 @@ int main(int argc, char *argv[])
     TripPlanner planner(&settings, &client);
     SearchController search(&settings, &client);
     Navigator navigator(&settings, &client);
+    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    SignPacks signPacks(dataDir + QStringLiteral("/signpacks"));
+    if (fixtures)
+        signPacks.setFixtureDir(SailfishApp::pathTo(QStringLiteral("fixtures")).toLocalFile());
+    RoadAlerts roadAlerts(&settings, &signPacks);
+    VoiceClips voiceClips(dataDir + QStringLiteral("/voice"));
 
     const qreal shortSide = qMin(view->screen()->size().width(), view->screen()->size().height());
     const qreal dp = shortSide / 360.0;
@@ -93,6 +102,9 @@ int main(int argc, char *argv[])
     ctx->setContextProperty(QStringLiteral("SearchController"), &search);
     ctx->setContextProperty(QStringLiteral("Navigator"), &navigator);
     ctx->setContextProperty(QStringLiteral("AppTools"), &tools);
+    ctx->setContextProperty(QStringLiteral("SignPacks"), &signPacks);
+    ctx->setContextProperty(QStringLiteral("RoadAlerts"), &roadAlerts);
+    ctx->setContextProperty(QStringLiteral("VoiceClips"), &voiceClips);
     ctx->setContextProperty(QStringLiteral("devGrabPath"), devGrab);
 
     view->engine()->addImportPath(SailfishApp::pathTo(QStringLiteral("qml")).toLocalFile());

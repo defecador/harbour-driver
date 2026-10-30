@@ -20,7 +20,11 @@ SOURCES += \
     src/SearchController.cpp \
     src/NavGeo.cpp \
     src/Navigator.cpp \
-    src/NavigatorTransit.cpp
+    src/NavigatorTransit.cpp \
+    src/RoadAlerts.cpp \
+    src/SignPacks.cpp \
+    src/SpeedLimitStore.cpp \
+    src/VoiceClips.cpp
 
 HEADERS += \
     src/AppTools.h \
@@ -32,7 +36,11 @@ HEADERS += \
     src/TripPlanner.h \
     src/SearchController.h \
     src/NavGeo.h \
-    src/Navigator.h
+    src/Navigator.h \
+    src/RoadAlerts.h \
+    src/SignPacks.h \
+    src/SpeedLimitStore.h \
+    src/VoiceClips.h
 
 DISTFILES += \
     qml/harbour-driver.qml \

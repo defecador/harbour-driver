@@ -8,6 +8,7 @@ QT += testlib network positioning
 QT -= gui
 
 INCLUDEPATH += ../src
+DEFINES += FIXTURE_DIR=\\\"$$PWD/../fixtures\\\"
 
 SOURCES += \
     tst_driver.cpp \
@@ -18,7 +19,10 @@ SOURCES += \
     ../src/Navigator.cpp \
     ../src/NavigatorTransit.cpp \
     ../src/AppSettings.cpp \
-    ../src/HereClient.cpp
+    ../src/HereClient.cpp \
+    ../src/RoadAlerts.cpp \
+    ../src/SignPacks.cpp \
+    ../src/SpeedLimitStore.cpp
 
 HEADERS += \
     ../src/FlexiblePolyline.h \
@@ -27,4 +31,7 @@ HEADERS += \
     ../src/NavGeo.h \
     ../src/Navigator.h \
     ../src/AppSettings.h \
-    ../src/HereClient.h
+    ../src/HereClient.h \
+    ../src/RoadAlerts.h \
+    ../src/SignPacks.h \
+    ../src/SpeedLimitStore.h

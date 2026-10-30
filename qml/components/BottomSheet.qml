@@ -8,8 +8,8 @@ import "../theme"
 // without needing per-corner radius (not available in Qt 5.6).
 Item {
     id: root
-    anchors.left: parent.left
-    anchors.right: sidePanel ? undefined : parent.right
+    x: sidePanel && sheetState === "hidden" ? -width : 0
+    Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     width: sidePanel ? panelWidth : parent.width
     height: parent.height
 
@@ -19,18 +19,21 @@ Item {
     property real peekHeight: 172 * M.dp
     property real halfFraction: 0.55
     property real fullFraction: 0.92
-    property string sheetState: "peek"   // peek | half | full
+    property string sheetState: "peek"   // hidden | peek | half | full
     default property alias content: contentColumn.data
 
     signal dragged()
 
+    // A hidden sheet is pushed this far below the window, so its handle does
+    // not show in the system bar area under the app.
+    readonly property real hiddenOffset: 80 * M.dp
     readonly property real halfHeight: parent.height * halfFraction
     readonly property real fullHeight: parent.height * fullFraction
 
     function heightFor(s) {
         if (s === "full") return fullHeight
         if (s === "half") return halfHeight
-        if (s === "hidden") return 0
+        if (s === "hidden") return -hiddenOffset
         return peekHeight
     }
 
@@ -72,7 +75,8 @@ Item {
     MouseArea {
         id: drag
         anchors.fill: parent
-        enabled: !root.sidePanel
+        // Also present in the side panel (where it does not drag anything):
+        // it keeps touches on the panel from reaching the map beneath.
         property bool dragging: false
         property real startGlobalY: 0
         property real startHeight: 0
@@ -82,6 +86,7 @@ Item {
         // would feed the drag's own output back into its input and make the sheet
         // jitter. Mapping into root.parent (stationary) breaks that feedback loop.
         onPressed: {
+            if (root.sidePanel) return
             dragging = true
             startGlobalY = mapToItem(root.parent, mouse.x, mouse.y).y
             startHeight = root.sheetHeight
@@ -91,7 +96,7 @@ Item {
             var curGlobalY = mapToItem(root.parent, mouse.x, mouse.y).y
             var delta = startGlobalY - curGlobalY
             var h = startHeight + delta
-            h = Math.max(root.peekHeight, Math.min(root.fullHeight, h))
+            h = Math.max(0, Math.min(root.fullHeight, h))
             root.sheetHeight = h
             root.dragged()
         }
@@ -99,13 +104,47 @@ Item {
         onCanceled: settle()
 
         function settle() {
+            if (!dragging) return
             dragging = false
             var h = root.sheetHeight
+            if (h < root.peekHeight * 0.5) {
+                root.sheetState = "hidden"
+                root.sheetHeight = root.heightFor("hidden")
+                return
+            }
             var mid = (root.peekHeight + root.halfHeight) / 2
             var mid2 = (root.halfHeight + root.fullHeight) / 2
             if (h < mid) root.sheetState = "peek"
             else if (h < mid2) root.sheetState = "half"
             else root.sheetState = "full"
+        }
+    }
+
+    // Hides the sheet / panel and brings it back. A swipe on the sheet only
+    // works where nothing else takes the touch (buttons and the search pill
+    // do), so this gives a dependable way to do it.
+    Rectangle {
+        id: tab
+        z: 5
+        x: root.sidePanel ? root.width : (root.width - width) / 2
+        y: root.sidePanel ? 24 * M.dp : -height - (root.sheetState === "hidden" ? root.hiddenOffset : 0)
+        width: root.sidePanel ? 28 * M.dp : 64 * M.dp
+        height: root.sidePanel ? 56 * M.dp : 28 * M.dp
+        radius: root.sidePanel || M.restyled ? 0 : 8 * M.dp
+        color: M.surface
+        border.width: M.restyled ? M.borderW : 1
+        border.color: M.restyled ? M.borderColor : M.outline
+        Icon {
+            anchors.centerIn: parent
+            size: 22 * M.dp
+            color: M.ink
+            name: root.sidePanel ? (root.sheetState === "hidden" ? "chevron_right" : "chevron_left")
+                             : (root.sheetState === "hidden" ? "expand_less" : "expand_more")
+        }
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -8 * M.dp
+            onClicked: root.sheetState = root.sheetState === "hidden" ? "peek" : "hidden"
         }
     }
 

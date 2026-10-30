@@ -15,6 +15,17 @@ HereClient::HereClient(QObject *parent)
 
 QPointer<QNetworkReply> HereClient::get(const QUrl &url, const QString &fixture, Callback cb)
 {
+    return send(url, QByteArray(), false, fixture, cb);
+}
+
+QPointer<QNetworkReply> HereClient::post(const QUrl &url, const QByteArray &json, const QString &fixture, Callback cb)
+{
+    return send(url, json, true, fixture, cb);
+}
+
+QPointer<QNetworkReply> HereClient::send(const QUrl &url, const QByteArray &body, bool post,
+                                         const QString &fixture, Callback cb)
+{
     if (fixtureMode()) {
         const QString path = m_fixtureDir + QLatin1Char('/') + fixture + QStringLiteral(".json");
         QTimer::singleShot(350, this, [path, cb]() {
@@ -30,13 +41,15 @@ QPointer<QNetworkReply> HereClient::get(const QUrl &url, const QString &fixture,
 
     // Third-party routing URLs carry the trip's coordinates: log the host only.
     if (url.host().endsWith(QLatin1String("hereapi.com")))
-        qInfo("HERE GET %s", qPrintable(HereUrls::redact(url.toString())));
+        qInfo("HERE %s %s", post ? "POST" : "GET", qPrintable(HereUrls::redact(url.toString())));
     else
         qInfo("GET %s", qPrintable(url.host()));
     QNetworkRequest req(url);
     req.setRawHeader("User-Agent", QByteArray("harbour-driver/") + QCoreApplication::applicationVersion().toUtf8()
                      + " (Sailfish OS)");
-    QNetworkReply *reply = m_nam.get(req);
+    if (post)
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QNetworkReply *reply = post ? m_nam.post(req, body) : m_nam.get(req);
 
     QTimer *timeout = new QTimer(reply);
     timeout->setSingleShot(true);

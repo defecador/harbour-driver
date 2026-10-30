@@ -1,0 +1,84 @@
+# Builds the offline stop/give-way/speed-camera packs and speed limit files the app downloads
+# (Settings > Sign data by country) from OpenStreetMap country extracts, and
+# publishes them as assets of the "signpacks" release. The app reads
+#   https://github.com/defecador/harbour-driver/releases/download/signpacks/index.json
+# Data (c) OpenStreetMap contributors, ODbL.
+name: Sign packs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 1 * *"
+  push:
+    tags:
+      - "signpacks-build*"
+
+permissions:
+  contents: write
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        run: |
+          python3 tools/signpacks/countries.py > countries.json
+          echo "matrix=$(jq -c '{include: .}' countries.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: countries
+          path: countries.json
+
+  build:
+    needs: list
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix: ${{ fromJson(needs.list.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install osmium
+      - name: Download ${{ matrix.name }}
+        run: curl -fL --retry 3 -o extract.osm.pbf "${{ matrix.url }}"
+      - name: Build pack
+        run: |
+          python tools/signpacks/build_pack.py extract.osm.pbf "${{ matrix.id }}.drsp"
+          python tools/signpacks/build_limits.py extract.osm.pbf "${{ matrix.id }}.drsl"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pack-${{ matrix.id }}
+          path: |
+            ${{ matrix.id }}.drsp
+            ${{ matrix.id }}.drsl
+
+  publish:
+    needs: [list, build]
+    if: ${{ !cancelled() && needs.build.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pack-*
+          merge-multiple: true
+          path: packs
+      - uses: actions/download-artifact@v4
+        with:
+          name: countries
+      - name: Write index
+        run: python3 tools/signpacks/make_index.py packs countries.json > index.json
+      - name: Publish release assets
+        run: |
+          gh release view signpacks >/dev/null 2>&1 || gh release create signpacks \
+            --title "Sign packs" \
+            --notes "Offline stop sign, give-way sign and speed camera data for the Driver app, built from OpenStreetMap. Data (c) OpenStreetMap contributors, licensed under the ODbL (https://www.openstreetmap.org/copyright). Rebuilt monthly by the Sign packs workflow."
+          gh release upload signpacks packs/*.drsp packs/*.drsl index.json --clobber

@@ -1,4 +1,6 @@
 #include "ItineraryParser.h"
+
+#include <QMap>
 #include "FlexiblePolyline.h"
 
 #include <QDateTime>
@@ -210,6 +212,106 @@ QString ItineraryParser::timeText(const QString &iso)
     return m.hasMatch() ? m.captured(1) : QString();
 }
 
+// Slow stretches of a car section, as {start, end, level} indices into the
+// section's coordinates (level 1 = moderate, 2 = heavy), from the ratio of
+// the current to the free-flow speed in each span. Neighbouring spans of the
+// same level are merged.
+static QVariantList trafficSegments(const QJsonObject &section, int pointCount, int baseOffset)
+{
+    QVariantList out;
+    const QJsonArray spans = section.value(QStringLiteral("spans")).toArray();
+    int curLevel = 0, curStart = 0;
+    auto flush = [&](int end) {
+        if (curLevel > 0 && end > curStart) {
+            QVariantMap m;
+            m[QStringLiteral("start")] = baseOffset + curStart;
+            m[QStringLiteral("end")] = baseOffset + end;
+            m[QStringLiteral("level")] = curLevel;
+            out.append(m);
+        }
+    };
+    for (int i = 0; i < spans.size(); ++i) {
+        const QJsonObject sp = spans[i].toObject();
+        const QJsonObject dyn = sp.value(QStringLiteral("dynamicSpeedInfo")).toObject();
+        const double base = dyn.value(QStringLiteral("baseSpeed")).toDouble();
+        const double now = dyn.value(QStringLiteral("trafficSpeed")).toDouble();
+        int level = 0;
+        if (base > 0) {
+            const double ratio = now / base;
+            level = ratio < 0.4 ? 2 : (ratio < 0.7 ? 1 : 0);
+        }
+        const int start = qBound(0, sp.value(QStringLiteral("offset")).toInt(), pointCount - 1);
+        if (level != curLevel) {
+            flush(start);
+            curLevel = level;
+            curStart = start;
+        }
+    }
+    flush(pointCount - 1);
+    return out;
+}
+
+// Legal speed limit per stretch of the section (spans=speedLimit, metres per
+// second) as {start, end, kmh} point ranges; stretches with no limit are left out.
+static QVariantList speedLimitSegments(const QJsonObject &section, int pointCount, int baseOffset)
+{
+    QVariantList out;
+    const QJsonArray spans = section.value(QStringLiteral("spans")).toArray();
+    int curKmh = 0, curStart = 0;
+    auto flush = [&](int end) {
+        if (curKmh > 0 && end > curStart) {
+            QVariantMap m;
+            m[QStringLiteral("start")] = baseOffset + curStart;
+            m[QStringLiteral("end")] = baseOffset + end;
+            m[QStringLiteral("kmh")] = curKmh;
+            out.append(m);
+        }
+    };
+    for (int i = 0; i < spans.size(); ++i) {
+        const QJsonObject sp = spans[i].toObject();
+        const QJsonValue v = sp.value(QStringLiteral("speedLimit"));
+        const double mps = v.isObject() ? v.toObject().value(QStringLiteral("speedLimit")).toDouble() : v.toDouble();
+        const int kmh = mps > 0 ? int(mps * 3.6 + 0.5) : 0;
+        const int start = qBound(0, sp.value(QStringLiteral("offset")).toInt(), pointCount - 1);
+        if (kmh != curKmh) {
+            flush(start);
+            curKmh = kmh;
+            curStart = start;
+        }
+    }
+    flush(pointCount - 1);
+    return out;
+}
+
+// Toll stretches of a section (spans=tollSystems + countryCode + segmentRef):
+// the countries that charge, in route order, and the road segments to feed
+// back as "avoid" to route around them.
+static void tollStretches(const QJsonObject &section, QStringList *order, QMap<QString, QStringList> *segments)
+{
+    for (const QJsonValue &v : section.value(QStringLiteral("spans")).toArray()) {
+        const QJsonObject sp = v.toObject();
+        if (sp.value(QStringLiteral("tollSystems")).toArray().isEmpty())
+            continue;
+        const QString country = sp.value(QStringLiteral("countryCode")).toString();
+        const QString ref = sp.value(QStringLiteral("segmentRef")).toString();
+        if (country.isEmpty() || ref.isEmpty())
+            continue;
+        if (!order->contains(country))
+            order->append(country);
+        // The route reports "$0::377526182:$1:155956282#-0..1" (segment id,
+        // direction travelled, range); avoiding wants "here:cm:segment:<id>#-".
+        static const QRegularExpression refRe(QStringLiteral("^\\$\\d+::\\d+:\\$\\d+:(\\d+)#([+-]?)"));
+        const QRegularExpressionMatch m = refRe.match(ref);
+        if (!m.hasMatch())
+            continue;
+        const QString avoid = QStringLiteral("here:cm:segment:") + m.captured(1)
+                              + (m.captured(2).isEmpty() ? QString() : QStringLiteral("#") + m.captured(2));
+        QStringList &list = (*segments)[country];
+        if (!list.contains(avoid))
+            list.append(avoid);
+    }
+}
+
 QVariantList ItineraryParser::parseRoutes(const QJsonObject &root, const QString &mode)
 {
     QVariantList out;
@@ -222,7 +324,9 @@ QVariantList ItineraryParser::parseRoutes(const QJsonObject &root, const QString
         // below is a list-of-per-section-lists (each append() adds one nested
         // QVariantList), so coords.size() would only count sections.
         int pointOffset = 0;
-        QVariantList coords, legs, actions;
+        QVariantList coords, legs, actions, traffic, speedLimits;
+        QStringList tollOrder;
+        QMap<QString, QStringList> tollSegs;
         for (const auto &sv : sections) {
             const QJsonObject s = sv.toObject();
             QJsonObject sum = s.value(QStringLiteral("summary")).toObject();
@@ -235,6 +339,11 @@ QVariantList ItineraryParser::parseRoutes(const QJsonObject &root, const QString
             const QVariantList c = decodeCoords(s.value(QStringLiteral("polyline")).toString());
             const QVariantList aLocal = parseActions(s.value(QStringLiteral("actions")).toArray());
             const QVariantList a = parseActions(s.value(QStringLiteral("actions")).toArray(), pointOffset);
+            if (mode == QLatin1String("car")) {
+                traffic.append(trafficSegments(s, c.size(), pointOffset));
+                speedLimits.append(speedLimitSegments(s, c.size(), pointOffset));
+                tollStretches(s, &tollOrder, &tollSegs);
+            }
             coords.append(c);
             pointOffset += c.size();
             actions.append(a);
@@ -265,6 +374,15 @@ QVariantList ItineraryParser::parseRoutes(const QJsonObject &root, const QString
         it[QStringLiteral("coordinates")] = coords;
         it[QStringLiteral("legs")] = legs;
         it[QStringLiteral("actions")] = actions;
+        it[QStringLiteral("traffic")] = traffic;
+        it[QStringLiteral("speedLimits")] = speedLimits;
+        // Countries with toll roads on this route, and per country the
+        // segments to avoid to get around them.
+        QVariantMap tollMap;
+        for (auto t = tollSegs.constBegin(); t != tollSegs.constEnd(); ++t)
+            tollMap[t.key()] = t.value();
+        it[QStringLiteral("tollCountries")] = tollOrder;
+        it[QStringLiteral("tollSegments")] = tollMap;
         it[QStringLiteral("attributions")] = QVariantList();
         out.append(it);
     }

@@ -34,11 +34,27 @@ Item {
     property real _mRight: 0
     property real _mBottom: 0
 
+    // The plugin reads its style only when a Map is created, so a different
+    // style needs a new Map: the Loader is switched off for a moment, and the
+    // routes drawn so far are put back once the new one is up (_replay).
+    property bool _rebuilding: false
+    function _applyStyleUrl(url) {
+        if (url === root._styleUrl)
+            return
+        var hadMap = mapLoader.item !== null
+        root._styleUrl = url
+        if (hadMap) {
+            root._rebuilding = true
+            rebuildTimer.restart()
+        }
+    }
+    Timer { id: rebuildTimer; interval: 50; onTriggered: root._rebuilding = false }
+
     function setStyleJson(json) {
         if (json && json.length > 0)
-            root._styleUrl = AppTools.writeStyleFile(json)
+            root._applyStyleUrl(AppTools.writeStyleFile(json))
     }
-    function setStyleUrl(url) { root._styleUrl = url }
+    function setStyleUrl(url) { root._applyStyleUrl(url) }
 
     function setCenter(lat, lng) {
         root._lat = lat
@@ -130,6 +146,9 @@ Item {
         meDot.navigating = active
     }
 
+    // Heading arrow (navigation) or plain dot (follow-me).
+    function setArrow(on) { meDot.navigating = on }
+
     function followTo(lat, lng, headingDeg) {
         meDot.heading = root._followTilt > 0 && root._following ? 0 : headingDeg
         root._me = QtPositioning.coordinate(lat, lng)
@@ -164,6 +183,26 @@ Item {
     property var _routeIds: []
     property var _params: ({})   // style id -> parameter object
     property bool _traveledAdded: false
+    property var _routeDefs: []     // what addRoute() was given, to redraw after a style swap
+    property var _traveledDef: null
+    property bool _replaying: false
+
+    function _replay() {
+        for (var id in root._params) {
+            try { root._params[id].destroy() } catch (e) {}   // already gone with the old Map
+        }
+        root._params = {}
+        root._routeIds = []
+        root._trafficIds = []
+        root._traveledAdded = false
+        root._replaying = true
+        var defs = root._routeDefs
+        for (var i = 0; i < defs.length; i++)
+            addRoute(defs[i].sourceId, defs[i].coordinates, defs[i].color, defs[i].selected, defs[i].dashed, defs[i].traffic)
+        if (root._traveledDef)
+            setTraveledOverlay(root._traveledDef.coordinates, root._traveledDef.color)
+        root._replaying = false
+    }
 
     function _geo(coords) {
         var c = []
@@ -200,7 +239,14 @@ Item {
         delete root._params[id]
     }
 
+    property var _trafficIds: []
+
     function clearRoutes() {
+        for (var t = 0; t < _trafficIds.length; t++) {
+            _remove(_trafficIds[t])
+            _remove(_trafficIds[t] + "-src")
+        }
+        _trafficIds = []
         for (var i = 0; i < _routeIds.length; i++) {
             var sid = _routeIds[i]
             _remove(sid + "-outline")
@@ -208,6 +254,7 @@ Item {
             _remove(sid + "-src")
         }
         _routeIds = []
+        _routeDefs = []
         clearTraveledOverlay()
     }
 
@@ -218,6 +265,8 @@ Item {
             clearTraveledOverlay()
             return
         }
+        if (!root._replaying)
+            root._traveledDef = {"coordinates": coordinates, "color": color}
         if (root._traveledAdded) {
             // Cheapest correct update: swap the data on the existing source.
             var src = root._params["navTraveled-src"]
@@ -225,11 +274,12 @@ Item {
             return
         }
         _addSource("navTraveled-src", coordinates)
-        _addLine("navTraveled", "navTraveled-src", {"line-color": color, "line-width": 15.0})
+        _addLine("navTraveled", "navTraveled-src", {"line-color": color, "line-width": 7.5})
         root._traveledAdded = true
     }
 
     function clearTraveledOverlay() {
+        root._traveledDef = null
         if (root._traveledAdded) {
             _remove("navTraveled")
             _remove("navTraveled-src")
@@ -237,15 +287,27 @@ Item {
         }
     }
 
-    function addRoute(sourceId, coordinates, color, selected, dashed) {
+    // trafficSegments: [{coordinates, color}] drawn over the route line (the
+    // slow stretches in orange/red).
+    function addRoute(sourceId, coordinates, color, selected, dashed, trafficSegments) {
+        if (!root._replaying)
+            root._routeDefs.push({"sourceId": sourceId, "coordinates": coordinates, "color": color,
+                                  "selected": selected, "dashed": dashed, "traffic": trafficSegments})
         _addSource(sourceId + "-src", coordinates)
         _addLine(sourceId + "-outline", sourceId + "-src",
-                 {"line-color": "#ffffff", "line-width": selected ? 21.0 : 14.0,
+                 {"line-color": "#ffffff", "line-width": selected ? 10.5 : 7.0,
                   "line-opacity": selected ? 1.0 : 0.85})
-        var paint = {"line-color": color, "line-width": selected ? 15.0 : 10.0}
+        var paint = {"line-color": color, "line-width": selected ? 7.5 : 5.0}
         if (dashed) paint["line-dasharray"] = [2, 2]
         _addLine(sourceId, sourceId + "-src", paint)
         _routeIds.push(sourceId)
+        var segs = trafficSegments || []
+        for (var k = 0; k < segs.length; k++) {
+            var tid = sourceId + "-t" + k
+            _addSource(tid + "-src", segs[k].coordinates)
+            _addLine(tid, tid + "-src", {"line-color": segs[k].color, "line-width": selected ? 7.5 : 5.0})
+            _trafficIds.push(tid)
+        }
     }
 
     // --- Pins --------------------------------------------------------
@@ -317,7 +379,7 @@ Item {
     Loader {
         id: mapLoader
         anchors.fill: parent
-        active: root._styleUrl !== ""
+        active: root._styleUrl !== "" && !root._rebuilding
         sourceComponent: mapComponent
     }
 
@@ -357,11 +419,15 @@ Item {
                 map.tilt = root._tilt
                 root.ready = true
                 root._reposition()
+                Qt.callLater(root._replay)
             }
 
+            // The map's gestures must not take a touch over from the panel
+            // beside it (list scrolling, buttons): only from other handlers.
             DragHandler {
                 id: dragger
                 target: null
+                grabPermissions: PointerHandler.CanTakeOverFromHandlersOnly | PointerHandler.ApprovesTakeOverByAnything
                 property point last: Qt.point(0, 0)
                 onActiveChanged: last = Qt.point(0, 0)
                 onTranslationChanged: {
@@ -372,6 +438,7 @@ Item {
             PinchHandler {
                 id: pincher
                 target: null
+                grabPermissions: PointerHandler.CanTakeOverFromHandlersOnly | PointerHandler.ApprovesTakeOverByAnything
                 onScaleChanged: (delta) => map.zoomLevel += Math.log(delta) / Math.LN2
                 onRotationChanged: (delta) => map.bearing -= delta
             }

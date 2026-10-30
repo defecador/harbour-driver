@@ -5,9 +5,11 @@ import "../components"
 Item {
     id: root
     signal closed()
+    signal signDataRequested()
 
     property string keyStatus: ""
     property bool keyOk: false
+    property string voiceError: ""
 
     Connections {
         target: SearchController
@@ -16,6 +18,14 @@ Item {
             root.keyOk = ok
         }
     }
+
+    Connections {
+        target: VoiceClips
+        onError: root.voiceError = message
+        onRecordingChanged: if (VoiceClips.recording.length > 0) root.voiceError = ""
+    }
+
+    Component.onDestruction: VoiceClips.stopRecording()
 
     Rectangle { anchors.fill: parent; color: M.bg }
 
@@ -43,8 +53,18 @@ Item {
         }
         Divider { width: parent.width }
 
+        Flickable {
+            id: flick
+            width: parent.width
+            height: root.height - y
+            clip: true
+            contentWidth: width
+            contentHeight: content.height + M.spacingM * 2
+            boundsBehavior: Flickable.StopAtBounds
+
         Column {
-            width: parent.width - M.spacingM * 2
+            id: content
+            width: flick.width - M.spacingM * 2
             x: M.spacingM
             y: M.spacingM
             spacing: M.spacingM
@@ -116,6 +136,172 @@ Item {
                 }
             }
 
+            Divider { width: parent.width }
+
+            MText { variant: "caption"; color: M.inkMuted; text: qsTr("Warnings while driving") }
+
+            Item {
+                width: parent.width
+                height: 56 * M.dp
+                MText {
+                    anchors.left: parent.left
+                    anchors.right: limitSwitch.left
+                    anchors.rightMargin: M.spacingS
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Show the speed limit of the road")
+                }
+                SwitchM {
+                    id: limitSwitch
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: AppSettings.speedLimitSign
+                    onToggled: AppSettings.speedLimitSign = checked
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: 56 * M.dp
+                MText {
+                    anchors.left: parent.left
+                    anchors.right: signsSwitch.left
+                    anchors.rightMargin: M.spacingS
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Warn about stop and give-way signs ahead")
+                }
+                SwitchM {
+                    id: signsSwitch
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: AppSettings.warnSigns
+                    onToggled: AppSettings.warnSigns = checked
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: 56 * M.dp
+                MText {
+                    anchors.left: parent.left
+                    anchors.right: camerasSwitch.left
+                    anchors.rightMargin: M.spacingS
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Speed camera alerts")
+                }
+                SwitchM {
+                    id: camerasSwitch
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: AppSettings.speedCameras
+                    onToggled: AppSettings.speedCameras = checked
+                }
+            }
+
+            MText {
+                width: parent.width
+                variant: "caption"
+                color: M.inkMuted
+                wrapMode: Text.WordWrap
+                text: qsTr("Warning about speed cameras while driving is banned in some countries, for example Germany and Switzerland. You are responsible for using this lawfully. Warnings come from OpenStreetMap data and can be incomplete.")
+            }
+
+            ListRow {
+                iconName: "download"
+                title: qsTr("Sign data by country")
+                subtitle: SignPacks.installedCount > 0
+                          ? qsTr("%n country downloaded", "", SignPacks.installedCount)
+                          : qsTr("Download the countries you drive in")
+                showChevron: true
+                showDivider: false
+                onClicked: root.signDataRequested()
+            }
+
+            Column {
+                width: parent.width
+                visible: VoiceClips.available
+                spacing: M.spacingS
+
+                MText {
+                    width: parent.width
+                    variant: "caption"
+                    color: M.inkMuted
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Your voice: record a short phrase for each warning. It plays when the sign is ahead, and music is turned down meanwhile.")
+                }
+
+                Repeater {
+                    model: [
+                        {"kind": "stop", "label": qsTr("Stop sign")},
+                        {"kind": "giveWay", "label": qsTr("Give way")},
+                        {"kind": "camera", "label": qsTr("Speed camera")}
+                    ]
+                    delegate: Item {
+                        id: voiceRow
+                        width: content.width
+                        height: 56 * M.dp
+                        readonly property bool has: VoiceClips.revision >= 0 && VoiceClips.has(modelData.kind)
+                        readonly property bool recording: VoiceClips.recording === modelData.kind
+
+                        Column {
+                            anchors.left: parent.left
+                            anchors.right: buttons.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            MText { text: modelData.label; variant: "subtitle" }
+                            MText {
+                                variant: "caption"
+                                color: voiceRow.recording ? M.bad : M.inkMuted
+                                text: voiceRow.recording ? qsTr("Recording... tap to stop")
+                                      : voiceRow.has ? qsTr("Recorded") : qsTr("Not recorded")
+                            }
+                        }
+                        Row {
+                            id: buttons
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: M.spacingS
+                            RoundIconButton {
+                                elevation: 0
+                                iconName: voiceRow.recording ? "stop" : "mic"
+                                iconColor: voiceRow.recording ? M.bad : M.ink
+                                onClicked: {
+                                    if (voiceRow.recording)
+                                        VoiceClips.stopRecording()
+                                    else
+                                        VoiceClips.startRecording(modelData.kind)
+                                }
+                            }
+                            RoundIconButton {
+                                elevation: 0
+                                enabled: voiceRow.has && !voiceRow.recording
+                                opacity: enabled ? 1 : 0.35
+                                iconName: "play_arrow"
+                                onClicked: VoiceClips.play(modelData.kind)
+                            }
+                            RoundIconButton {
+                                elevation: 0
+                                enabled: voiceRow.has && !voiceRow.recording
+                                opacity: enabled ? 1 : 0.35
+                                iconName: "delete"
+                                onClicked: VoiceClips.remove(modelData.kind)
+                            }
+                        }
+                    }
+                }
+
+                MText {
+                    visible: root.voiceError.length > 0
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: M.bad
+                    text: root.voiceError
+                }
+            }
+
+            Divider { width: parent.width }
+
             MText { variant: "caption"; color: M.inkMuted; text: qsTr("Look") }
             Row {
                 spacing: M.spacingS
@@ -168,6 +354,7 @@ Item {
                     onClicked: AppSettings.units = "imperial"
                 }
             }
+        }
         }
     }
 }

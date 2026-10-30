@@ -12,6 +12,10 @@
 #include "ItineraryParser.h"
 #include "NavGeo.h"
 #include "Navigator.h"
+#include "RoadAlerts.h"
+#include "SignPacks.h"
+#include "SpeedLimitStore.h"
+#include <QTemporaryDir>
 
 class TstDriver : public QObject
 {
@@ -58,6 +62,7 @@ private slots:
     void navigator_offRouteWaitsBeforeRerouting();
     void navigator_rerouteRespectsCooldownAndPerTripLimit();
     void navigator_slightlyOffRouteWaitsLonger();
+    void navigator_snapsFixesOntoTheRoute();
 
     // --- Navigator transit -------------------------------------------
     void parser_stopExpectedMsEqualsTime();
@@ -70,6 +75,26 @@ private slots:
     void transit_delayRefreshNoMatchKeepsOldPlan();
     void transit_hurryWhenWalkIsLongerThanTimeToDeparture();
     void transit_offRouteOnWalkLegReroutesPedestrianToLegEnd();
+
+    // --- Sign packs and road alerts ------------------------------------------
+    void navgeo_angleDiffWrapsAround();
+    void navgeo_bearingDegreesCardinals();
+    void signpacks_roundTripKeepsRecords();
+    void signpacks_rejectsDamagedFiles();
+    void signpacks_nearAndCovers();
+    void roadalerts_routeAlertFiresOnceAndClearsAfterPassing();
+    void roadalerts_routeIgnoresOppositeDirectionAndSideStreets();
+    void roadalerts_camerasOnlyWhenEnabled();
+    void roadalerts_freeDriveUsesHeadingCone();
+    void roadalerts_lookaheadGrowsWithSpeed();
+    void roadalerts_inactiveStaysSilentAndNoDataIsReported();
+    void roadalerts_fixtureAlongRouteCar();
+    void tolls_parserListsCountriesAndAvoidSegments();
+    void tolls_urlAndBody();
+    void speedlimit_parserReadsHereSpans();
+    void speedlimit_storeEncodeLoadLookup();
+    void speedlimit_storeCrossesTileBorders();
+    void roadalerts_speedLimitFromRouteThenRoadData();
 };
 
 // Encoded with a from-scratch encoder that mirrors FlexiblePolyline::decode()
@@ -652,17 +677,18 @@ void TstDriver::navigator_offRouteWaitsBeforeRerouting()
     int rerouteCalls = 0;
     nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
 
-    // 100m off the route (car's off-route threshold is 35m, so this is far
-    // off): off-route immediately, but a reroute must wait 2 continuous seconds.
+    // 100m off the route (car's off-route threshold is 25m, so this is far
+    // off): off-route immediately, but one stray fix must not reroute; the
+    // next one, half a second or more later, does.
     const auto off = northOfRouteStart(100);
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
     QVERIFY(nav.offRoute());
     QCOMPARE(rerouteCalls, 0);
 
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1500);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 300);
     QCOMPARE(rerouteCalls, 0);
 
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2500);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1000);
     QCOMPARE(rerouteCalls, 1);
     QCOMPARE(nav.rerouteCount(), 1);
 }
@@ -678,14 +704,37 @@ void TstDriver::navigator_slightlyOffRouteWaitsLonger()
     int rerouteCalls = 0;
     nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
 
-    // 50m off: beyond the 35m threshold but not "far", so 4s are needed.
-    const auto off = northOfRouteStart(50);
+    // 40m off: beyond the 25m threshold but not "far", so 1.5s are needed.
+    const auto off = northOfRouteStart(40);
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
     QVERIFY(nav.offRoute());
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 3000);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1000);
     QCOMPARE(rerouteCalls, 0);
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 4500);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1600);
     QCOMPARE(rerouteCalls, 1);
+}
+
+void TstDriver::navigator_snapsFixesOntoTheRoute()
+{
+    const auto itinerary = makeItinerary(QStringLiteral("car"),
+            {onTestRoute(0), onTestRoute(100000)},
+            {makeAction(QStringLiteral("depart"), QString(), QString(), 60, 0),
+             makeAction(QStringLiteral("arrive"), QString(), QString(), 0, 1)});
+    Navigator nav(nullptr, nullptr);
+    nav.start(itinerary, destOf(onTestRoute(100000)));
+    QVERIFY(!nav.snapped());
+
+    // 10m beside the road: drawn on it, heading along it.
+    const auto beside = northOfRouteStart(10);
+    nav.updatePosition(beside.latitude(), beside.longitude(), 5.0, 14.0, 80.0, 0);
+    QVERIFY(nav.snapped());
+    QVERIFY(qAbs(nav.snappedLat()) < 1e-7);
+    QVERIFY(qAbs(nav.snappedHeading() - 90.0) < 0.5);
+
+    // Really off the road: shown where it is.
+    const auto off = northOfRouteStart(60);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 14.0, 80.0, 1000);
+    QVERIFY(!nav.snapped());
 }
 
 void TstDriver::navigator_rerouteRespectsCooldownAndPerTripLimit()
@@ -701,24 +750,24 @@ void TstDriver::navigator_rerouteRespectsCooldownAndPerTripLimit()
     nav.setRerouteRequesterForTesting([&](double, double, int) { ++rerouteCalls; });
     const auto off = northOfRouteStart(100);
 
-    // First reroute fires once 2s far off-route have passed.
+    // First reroute fires once 0.5s far off-route have passed.
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 0);
+    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 1000);
+    QCOMPARE(rerouteCalls, 1);
+
+    // Still off-route 1s later: the 3s cooldown blocks a second attempt.
     nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2000);
     QCOMPARE(rerouteCalls, 1);
 
-    // Still off-route 100ms later: the 10s cooldown blocks a second attempt.
-    nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, 2100);
-    QCOMPARE(rerouteCalls, 1);
-
-    // 15 attempts total is the per-trip cap; keep going every 10s past that
-    // and confirm it stops incrementing at 15.
-    qint64 ts = 2000;
-    for (int i = 0; i < 20; ++i) {
-        ts += 10000;
+    // 30 attempts total is the per-trip cap; keep going every 4s past that
+    // and confirm it stops incrementing at 30.
+    qint64 ts = 1000;
+    for (int i = 0; i < 40; ++i) {
+        ts += 4000;
         nav.updatePosition(off.latitude(), off.longitude(), 5.0, 5.0, 90.0, ts);
     }
-    QCOMPARE(rerouteCalls, 15);
-    QCOMPARE(nav.rerouteCount(), 15);
+    QCOMPARE(rerouteCalls, 30);
+    QCOMPARE(nav.rerouteCount(), 30);
 }
 
 // =======================================================================
@@ -1132,6 +1181,456 @@ void TstDriver::transit_offRouteOnWalkLegReroutesPedestrianToLegEnd()
     QCOMPARE(requests, 0);
     nav.updatePosition(off.latitude(), off.longitude(), 5, 1.4, 90, t0 + 9000);
     QCOMPARE(requests, 1);
+}
+
+
+namespace {
+
+Sign mkSign(const QGeoCoordinate &c, int kind, int bearing, int maxspeed = 0)
+{
+    Sign s;
+    s.latE7 = qint32(std::lround(c.latitude() * 1e7));
+    s.lngE7 = qint32(std::lround(c.longitude() * 1e7));
+    s.kind = quint8(kind);
+    s.bearing = qint16(bearing);
+    s.maxspeed = quint8(maxspeed);
+    return s;
+}
+
+// Straight eastbound route along the equator (see onTestRoute), a point every 100 m.
+QVariantList eastRoute(double lengthM)
+{
+    QVariantList l;
+    for (double m = 0; m <= lengthM; m += 100)
+        l.append(QVariant::fromValue(onTestRoute(m)));
+    return l;
+}
+
+SignPacks *packsWith(const QVector<Sign> &signs)
+{
+    SignPacks *p = new SignPacks();
+    if (!p->install(QStringLiteral("t"), SignPacks::buildPack(signs, 20250101))) {
+        delete p;
+        return nullptr;
+    }
+    return p;
+}
+
+// Drives east from `fromM` to `toM` in 10 m steps at 14 m/s, returning the
+// "alertStarted" kinds in order.
+QStringList driveEast(RoadAlerts &ra, double fromM, double toM, double headingDeg, qint64 t0 = 1000000)
+{
+    QStringList kinds;
+    const QMetaObject::Connection conn =
+        QObject::connect(&ra, &RoadAlerts::alertStarted, [&kinds](const QString &k) { kinds.append(k); });
+    qint64 t = t0;
+    for (double m = fromM; m <= toM; m += 10, t += 714) {
+        const QGeoCoordinate c = onTestRoute(m);
+        ra.updatePosition(c.latitude(), c.longitude(), 14.0, headingDeg, t);
+    }
+    QObject::disconnect(conn);
+    return kinds;
+}
+
+}
+
+void TstDriver::navgeo_angleDiffWrapsAround()
+{
+    QCOMPARE(NavGeo::angleDiff(350, 10), 20.0);
+    QCOMPARE(NavGeo::angleDiff(10, 350), 20.0);
+    QCOMPARE(NavGeo::angleDiff(90, 270), 180.0);
+    QCOMPARE(NavGeo::angleDiff(45, 45), 0.0);
+}
+
+void TstDriver::navgeo_bearingDegreesCardinals()
+{
+    QVERIFY(qAbs(NavGeo::bearingDegrees(52, 13, 52.01, 13) - 0.0) < 0.5);
+    QVERIFY(qAbs(NavGeo::bearingDegrees(52, 13, 52, 13.01) - 90.0) < 0.5);
+    QVERIFY(qAbs(NavGeo::bearingDegrees(52, 13, 51.99, 13) - 180.0) < 0.5);
+    QVERIFY(qAbs(NavGeo::bearingDegrees(52, 13, 52, 12.99) - 270.0) < 0.5);
+}
+
+void TstDriver::signpacks_roundTripKeepsRecords()
+{
+    QVector<Sign> in;
+    in << mkSign(QGeoCoordinate(52.5, 13.4), Sign::Stop, 256)
+       << mkSign(QGeoCoordinate(52.6, 13.5), Sign::Camera, -1, 50)
+       << mkSign(QGeoCoordinate(-33.9, -70.7), Sign::GiveWay, 90);
+    const QByteArray bytes = SignPacks::buildPack(in, 20250315);
+    QCOMPARE(bytes.size(), 32 + 3 * 12);
+
+    SignPacks::Header h;
+    QVector<Sign> out;
+    QVERIFY(SignPacks::parsePack(bytes, &h, &out));
+    QCOMPARE(h.count, 3u);
+    QCOMPARE(h.date, 20250315u);
+    QCOMPARE(h.minLat, in[2].latE7);   // southern hemisphere handled
+    QCOMPARE(h.maxLng, in[1].lngE7);
+    QCOMPARE(out.size(), 3);
+    QCOMPARE(out[0].latE7, in[0].latE7);
+    QCOMPARE(out[0].bearing, qint16(256));
+    QCOMPARE(out[0].kind, quint8(Sign::Stop));
+    QCOMPARE(out[1].bearing, qint16(-1));
+    QCOMPARE(out[1].maxspeed, quint8(50));
+    QCOMPARE(out[2].lngE7, in[2].lngE7);   // negative longitude survives
+    QCOMPARE(out[2].bearing, qint16(90));
+}
+
+void TstDriver::signpacks_rejectsDamagedFiles()
+{
+    QVector<Sign> in;
+    in << mkSign(QGeoCoordinate(52.5, 13.4), Sign::Stop, 90);
+    QByteArray good = SignPacks::buildPack(in, 20250101);
+    QVERIFY(SignPacks::parsePack(good, nullptr, nullptr));
+    QVERIFY(!SignPacks::parsePack(good.left(good.size() - 1), nullptr, nullptr));   // truncated
+    QByteArray badMagic = good;
+    badMagic[0] = 'X';
+    QVERIFY(!SignPacks::parsePack(badMagic, nullptr, nullptr));
+    QVERIFY(!SignPacks::parsePack(QByteArray("DRSP"), nullptr, nullptr));
+    QVERIFY(!SignPacks::parsePack(QByteArray(), nullptr, nullptr));
+}
+
+void TstDriver::signpacks_nearAndCovers()
+{
+    QVector<Sign> in;
+    in << mkSign(QGeoCoordinate(52.5000, 13.4000), Sign::Stop, 90)
+       << mkSign(QGeoCoordinate(52.5030, 13.4000), Sign::GiveWay, 90)   // ~334 m north
+       << mkSign(QGeoCoordinate(52.9000, 13.4000), Sign::Stop, 90);     // far away
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    QVERIFY(!packs.isNull());
+    QCOMPARE(packs->installedCount(), 1);
+    QCOMPARE(packs->near(52.5, 13.4, 100).size(), 1);
+    QCOMPARE(packs->near(52.5, 13.4, 400).size(), 2);
+    QCOMPARE(packs->near(52.5, 13.4, 50000).size(), 3);
+    QCOMPARE(packs->near(10.0, 10.0, 1000).size(), 0);
+    QVERIFY(packs->covers(52.6, 13.4));
+    QVERIFY(!packs->covers(40.0, -3.7));
+
+    packs->remove(QStringLiteral("t"));
+    QCOMPARE(packs->installedCount(), 0);
+    QCOMPARE(packs->near(52.5, 13.4, 400).size(), 0);
+}
+
+void TstDriver::roadalerts_routeAlertFiresOnceAndClearsAfterPassing()
+{
+    QVector<Sign> in;
+    in << mkSign(onTestRoute(1000), Sign::Stop, 90);
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setKinds(true, false);
+    ra.setActive(true);
+    ra.setRoute(eastRoute(2000));
+
+    QStringList started;
+    QObject::connect(&ra, &RoadAlerts::alertStarted, [&started](const QString &k) { started.append(k); });
+    qint64 t = 1000000;
+    int lastDistance = -1;
+    bool sawAlert = false;
+    for (double m = 0; m <= 1300; m += 10, t += 714) {
+        const QGeoCoordinate c = onTestRoute(m);
+        ra.updatePosition(c.latitude(), c.longitude(), 14.0, 90.0, t);
+        if (m < 700)
+            QVERIFY2(ra.kind().isEmpty(), "must stay silent outside the lookahead");
+        if (!ra.kind().isEmpty()) {
+            sawAlert = true;
+            QCOMPARE(ra.kind(), QStringLiteral("stop"));
+            QVERIFY(lastDistance < 0 || ra.distance() <= lastDistance);   // counts down
+            lastDistance = ra.distance();
+        }
+        if (m > 1020)
+            QVERIFY2(ra.kind().isEmpty(), "must clear once the sign is passed");
+    }
+    QVERIFY(sawAlert);
+    QCOMPARE(started, QStringList() << QStringLiteral("stop"));   // once, not per fix
+}
+
+void TstDriver::roadalerts_routeIgnoresOppositeDirectionAndSideStreets()
+{
+    constexpr double kDegPerM = 180.0 / (M_PI * 6371000.0);
+    QVector<Sign> in;
+    in << mkSign(onTestRoute(500), Sign::Stop, 270)                                  // other direction of travel
+       << mkSign(QGeoCoordinate(25 * kDegPerM, onTestRoute(900).longitude()), Sign::Stop, 90)   // 25 m off the route
+       << mkSign(onTestRoute(1300), Sign::GiveWay, 0)                                // cross street
+       << mkSign(onTestRoute(1700), Sign::GiveWay, 90);                              // the real one
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setKinds(true, true);
+    ra.setActive(true);
+    ra.setRoute(eastRoute(2000));
+    const QStringList kinds = driveEast(ra, 0, 1900, 90);
+    QCOMPARE(kinds, QStringList() << QStringLiteral("giveWay"));
+}
+
+void TstDriver::roadalerts_camerasOnlyWhenEnabled()
+{
+    QVector<Sign> in;
+    in << mkSign(onTestRoute(800), Sign::Camera, -1, 50);
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setActive(true);
+    ra.setRoute(eastRoute(2000));
+
+    ra.setKinds(true, false);
+    QVERIFY(driveEast(ra, 0, 1000, 90).isEmpty());
+
+    ra.setRoute(eastRoute(2000));
+    ra.setKinds(true, true);
+    QStringList kinds = driveEast(ra, 0, 1000, 90, 9000000);
+    QCOMPARE(kinds, QStringList() << QStringLiteral("camera"));
+    ra.setKinds(true, true);
+
+    // The camera's speed limit is reported.
+    ra.setRoute(eastRoute(2000));
+    const QGeoCoordinate near = onTestRoute(600);
+    ra.updatePosition(near.latitude(), near.longitude(), 14.0, 90.0, 20000000);
+    QCOMPARE(ra.kind(), QStringLiteral("camera"));
+    QCOMPARE(ra.maxspeed(), 50);
+    ra.setKinds(true, false);   // switching it off drops the alert at once
+    QVERIFY(ra.kind().isEmpty());
+}
+
+void TstDriver::roadalerts_freeDriveUsesHeadingCone()
+{
+    constexpr double kDegPerM = 180.0 / (M_PI * 6371000.0);
+    QVector<Sign> in;
+    in << mkSign(onTestRoute(600), Sign::Stop, 90)                                         // ahead, on the line
+       << mkSign(QGeoCoordinate(40 * kDegPerM, onTestRoute(900).longitude()), Sign::Stop, 90)   // 40 m to the side
+       << mkSign(onTestRoute(-300), Sign::GiveWay, 90)                                       // behind
+       << mkSign(onTestRoute(1200), Sign::GiveWay, 270);                                     // ahead but for the other direction
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setKinds(true, false);
+    ra.setActive(true);   // no route set: heading cone
+    // Heading unknown (-1): derived from the movement itself.
+    const QStringList kinds = driveEast(ra, -250, 1400, -1);
+    QCOMPARE(kinds, QStringList() << QStringLiteral("stop"));
+}
+
+void TstDriver::roadalerts_lookaheadGrowsWithSpeed()
+{
+    QVERIFY(RoadAlerts::lookahead(false, 5) == 120.0);       // floor
+    QVERIFY(RoadAlerts::lookahead(false, 20) == 240.0);
+    QVERIFY(RoadAlerts::lookahead(false, 50) == 300.0);      // cap
+    QVERIFY(RoadAlerts::lookahead(true, 5) == 250.0);
+    QVERIFY(RoadAlerts::lookahead(true, 30) == 450.0);
+    QVERIFY(RoadAlerts::lookahead(true, 80) == 800.0);
+    QVERIFY(RoadAlerts::lookahead(true, 30) > RoadAlerts::lookahead(false, 30));
+}
+
+void TstDriver::roadalerts_inactiveStaysSilentAndNoDataIsReported()
+{
+    QVector<Sign> in;
+    in << mkSign(onTestRoute(500), Sign::Stop, 90);
+    QScopedPointer<SignPacks> packs(packsWith(in));
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setKinds(true, false);
+    ra.setRoute(eastRoute(2000));
+    QVERIFY(driveEast(ra, 0, 800, 90).isEmpty());   // not active
+
+    ra.setActive(true);
+    QSignalSpy noData(&ra, &RoadAlerts::noDataChanged);
+    ra.updatePosition(40.0, -3.7, 14.0, 90.0, 5000);   // Madrid, no pack installed there
+    QVERIFY(ra.noData());
+    QCOMPARE(noData.count(), 1);
+    ra.setActive(false);
+    QVERIFY(!ra.noData());
+}
+
+void TstDriver::roadalerts_fixtureAlongRouteCar()
+{
+    QFile f(QStringLiteral(FIXTURE_DIR "/route_car.json"));
+    QVERIFY(f.open(QIODevice::ReadOnly));
+    const QJsonObject root = QJsonDocument::fromJson(f.readAll()).object();
+    const QVariantList routes = ItineraryParser::parseRoutes(root, QStringLiteral("car"));
+    QVERIFY(!routes.isEmpty());
+    const QVariantList coords = routes.first().toMap().value(QStringLiteral("coordinates")).toList();
+    QVERIFY(coords.size() >= 2);
+
+    // Samples every 10 m along the polyline.
+    QVector<QGeoCoordinate> track;
+    for (int i = 0; i + 1 < coords.size(); ++i) {
+        const QGeoCoordinate a = coords[i].value<QGeoCoordinate>(), b = coords[i + 1].value<QGeoCoordinate>();
+        const double len = a.distanceTo(b);
+        for (double d = 0; d < len; d += 10)
+            track.append(a.atDistanceAndAzimuth(d, a.azimuthTo(b)));
+    }
+    QVERIFY(track.size() > 200);
+
+    SignPacks packs;
+    packs.setFixtureDir(QStringLiteral(FIXTURE_DIR));
+    QCOMPARE(packs.installedCount(), 1);
+
+    for (int withRoute = 0; withRoute < 2; ++withRoute) {
+        for (int cameras = 0; cameras < 2; ++cameras) {
+            RoadAlerts ra(nullptr, &packs);
+            ra.setKinds(true, cameras == 1);
+            ra.setActive(true);
+            if (withRoute)
+                ra.setRoute(coords);
+            QStringList kinds;
+            QObject::connect(&ra, &RoadAlerts::alertStarted, [&kinds](const QString &k) { kinds.append(k); });
+            qint64 t = 1000000;
+            for (const QGeoCoordinate &c : track) {
+                ra.updatePosition(c.latitude(), c.longitude(), 14.0, withRoute ? 256.0 : -1.0, t);
+                t += 714;
+            }
+            QStringList expected;
+            expected << QStringLiteral("stop") << QStringLiteral("giveWay");
+            if (cameras)
+                expected << QStringLiteral("camera");
+            QVERIFY2(kinds == expected, qPrintable(QStringLiteral("route=%1 cameras=%2 got %3")
+                                                       .arg(withRoute).arg(cameras).arg(kinds.join(','))));
+        }
+    }
+}
+
+
+void TstDriver::tolls_parserListsCountriesAndAvoidSegments()
+{
+    QFile f(QStringLiteral(FIXTURE_DIR "/route_car.json"));
+    QVERIFY(f.open(QIODevice::ReadOnly));
+    const QVariantList routes = ItineraryParser::parseRoutes(QJsonDocument::fromJson(f.readAll()).object(), QStringLiteral("car"));
+    const QVariantMap first = routes.first().toMap();
+    QCOMPARE(first.value(QStringLiteral("tollCountries")).toStringList(),
+             QStringList() << QStringLiteral("DEU") << QStringLiteral("POL"));
+    const QVariantMap segs = first.value(QStringLiteral("tollSegments")).toMap();
+    // The direction travelled is kept, the range is dropped, and a stretch
+    // without a toll system (segment 1003) is not listed.
+    QCOMPARE(segs.value(QStringLiteral("DEU")).toStringList(),
+             QStringList() << QStringLiteral("here:cm:segment:1001#+") << QStringLiteral("here:cm:segment:1002#+"));
+    QCOMPARE(segs.value(QStringLiteral("POL")).toStringList(), QStringList() << QStringLiteral("here:cm:segment:2001#-"));
+
+    // The avoided variant has none.
+    QFile g(QStringLiteral(FIXTURE_DIR "/route_car_avoid.json"));
+    QVERIFY(g.open(QIODevice::ReadOnly));
+    const QVariantList avoided = ItineraryParser::parseRoutes(QJsonDocument::fromJson(g.readAll()).object(), QStringLiteral("car"));
+    QVERIFY(avoided.first().toMap().value(QStringLiteral("tollCountries")).toStringList().isEmpty());
+}
+
+void TstDriver::tolls_urlAndBody()
+{
+    const HereUrls::LatLng a{52.5, 13.4}, b{48.1, 11.5};
+    const QUrl plain = HereUrls::route(QStringLiteral("K"), QStringLiteral("car"), a, b, QStringLiteral("en"),
+                                       QStringLiteral("metric"), 2);
+    QVERIFY(!plain.toString().contains(QStringLiteral("tolls")));
+    QVERIFY(!plain.toString().contains(QStringLiteral("segmentRef")));
+    const QUrl tolls = HereUrls::route(QStringLiteral("K"), QStringLiteral("car"), a, b, QStringLiteral("en"),
+                                       QStringLiteral("metric"), 2, -1, {}, QString(), true);
+    const QUrlQuery q(tolls);
+    QVERIFY(q.queryItemValue(QStringLiteral("return")).endsWith(QStringLiteral(",tolls")));
+    QVERIFY(q.queryItemValue(QStringLiteral("spans")).contains(QStringLiteral("tollSystems")));
+    // Not for walking.
+    const QUrl walk = HereUrls::route(QStringLiteral("K"), QStringLiteral("pedestrian"), a, b, QStringLiteral("en"),
+                                      QStringLiteral("metric"), 0, -1, {}, QString(), true);
+    QVERIFY(!walk.toString().contains(QStringLiteral("tolls")));
+
+    const QJsonObject body = QJsonDocument::fromJson(
+        HereUrls::avoidSegmentsBody(QStringList() << QStringLiteral("here:cm:segment:1#+") << QStringLiteral("here:cm:segment:2#-"))).object();
+    QCOMPARE(body.value(QStringLiteral("avoid")).toObject().value(QStringLiteral("segments")).toArray().size(), 2);
+}
+
+void TstDriver::speedlimit_parserReadsHereSpans()
+{
+    QFile f(QStringLiteral(FIXTURE_DIR "/route_car.json"));
+    QVERIFY(f.open(QIODevice::ReadOnly));
+    const QVariantList routes = ItineraryParser::parseRoutes(QJsonDocument::fromJson(f.readAll()).object(), QStringLiteral("car"));
+    const QVariantList limits = routes.first().toMap().value(QStringLiteral("speedLimits")).toList();
+    QCOMPARE(limits.size(), 2);   // 50 km/h then 30 km/h
+    QCOMPARE(limits[0].toMap().value(QStringLiteral("kmh")).toInt(), 50);
+    QCOMPARE(limits[0].toMap().value(QStringLiteral("start")).toInt(), 0);
+    QCOMPARE(limits[1].toMap().value(QStringLiteral("kmh")).toInt(), 30);
+    QCOMPARE(limits[0].toMap().value(QStringLiteral("end")).toInt(), limits[1].toMap().value(QStringLiteral("start")).toInt());
+}
+
+void TstDriver::speedlimit_storeEncodeLoadLookup()
+{
+    SpeedLimitStore::LimitWay a, oneway;
+    a.limit = 50;
+    a.lat << 52.5000 << 52.5000;
+    a.lng << 13.4010 << 13.4100;   // eastbound road
+    oneway.limit = 30;
+    oneway.flags = 1;               // forward travel only
+    oneway.lat << 52.5100 << 52.5100;
+    oneway.lng << 13.4010 << 13.4100;
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QFile out(dir.path() + QStringLiteral("/t.drsl"));
+    QVERIFY(out.open(QIODevice::WriteOnly));
+    out.write(SpeedLimitStore::encode(QVector<SpeedLimitStore::LimitWay>() << a << oneway, 20250101));
+    out.close();
+
+    SpeedLimitStore store;
+    store.load(dir.path());
+    QVERIFY(!store.isEmpty());
+    QCOMPARE(store.lookup(52.5000, 13.4050, 90), 50);
+    QCOMPARE(store.lookup(52.5000, 13.4050, 270), 50);    // either way along a two-way road
+    QCOMPARE(store.lookup(52.5000, 13.4050, -1), 50);     // heading unknown
+    QCOMPARE(store.lookup(52.5000, 13.4050, 0), 0);       // across the road
+    QCOMPARE(store.lookup(52.50040, 13.4050, 90), 0);     // ~45 m off the road
+    QCOMPARE(store.lookup(52.5100, 13.4050, 90), 30);
+    QCOMPARE(store.lookup(52.5100, 13.4050, 270), 0);     // against a one-way road
+    QCOMPARE(store.lookup(48.0, 2.0, 90), 0);             // no data there
+}
+
+void TstDriver::speedlimit_storeCrossesTileBorders()
+{
+    // Filed under the tile of its first point (13.3 - 13.4 degrees) but also
+    // passing through the next one.
+    SpeedLimitStore::LimitWay w;
+    w.limit = 70;
+    w.lat << 52.5000 << 52.5000;
+    w.lng << 13.3990 << 13.4100;
+    QTemporaryDir dir;
+    QFile out(dir.path() + QStringLiteral("/t.drsl"));
+    QVERIFY(out.open(QIODevice::WriteOnly));
+    out.write(SpeedLimitStore::encode(QVector<SpeedLimitStore::LimitWay>() << w, 20250101));
+    out.close();
+    SpeedLimitStore store;
+    store.load(dir.path());
+    QCOMPARE(store.lookup(52.5000, 13.3995, 90), 70);   // in the first tile
+    QCOMPARE(store.lookup(52.5000, 13.4005, 90), 70);   // just past the border
+}
+
+void TstDriver::roadalerts_speedLimitFromRouteThenRoadData()
+{
+    QScopedPointer<SignPacks> packs(packsWith(QVector<Sign>() << mkSign(onTestRoute(5000), Sign::Stop, 90)));
+    QVERIFY(packs->limitStore()->loadJson(QByteArray(
+        R"({"ways":[{"limit":80,"flags":0,"points":[[0.0, 13.0],[0.0, 13.05]]}]})")));
+
+    RoadAlerts ra(nullptr, packs.data());
+    ra.setKinds(false, false);   // limits don't depend on the warning settings
+    ra.setActive(true);
+    QSignalSpy changed(&ra, &RoadAlerts::speedLimitChanged);
+
+    // On a route: HERE's limits, in point ranges (every 100 m here).
+    ra.setRoute(eastRoute(2000));
+    ra.setRouteLimits(QVariantList() << QVariantMap{{"start", 0}, {"end", 10}, {"kmh", 50}}
+                                     << QVariantMap{{"start", 10}, {"end", 20}, {"kmh", 30}});
+    qint64 t = 1000000;
+    auto at = [&](double m) {
+        const QGeoCoordinate c = onTestRoute(m);
+        ra.updatePosition(c.latitude(), c.longitude(), 14.0, 90.0, t);
+        t += 1000;
+    };
+    at(300);
+    QCOMPARE(ra.speedLimit(), 50);
+    at(800);
+    at(1300);
+    at(1500);
+    QCOMPARE(ra.speedLimit(), 30);
+
+    // Off the route (free drive): the downloaded road data, held for a few
+    // seconds when it has a gap, then dropped.
+    ra.clearRoute();
+    at(1600);
+    QCOMPARE(ra.speedLimit(), 80);
+    const QGeoCoordinate far = onTestRoute(9000000);   // nowhere near the way
+    ra.updatePosition(far.latitude(), far.longitude(), 14.0, 90.0, t + 2000);
+    QCOMPARE(ra.speedLimit(), 80);
+    ra.updatePosition(far.latitude(), far.longitude(), 14.0, 90.0, t + 12000);
+    QCOMPARE(ra.speedLimit(), 0);
+    ra.setActive(false);
+    QVERIFY(changed.count() >= 3);
 }
 
 QTEST_GUILESS_MAIN(TstDriver)

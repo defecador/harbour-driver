@@ -32,6 +32,8 @@ Item {
     readonly property real povZoomMin: 16.8
     readonly property real povZoomMax: 21.0
     property bool muted: false
+    // Accuracy (m) of the latest GPS fix, -1 before any; AppRoot keeps it up to date.
+    property real gpsAccuracy: -1
 
     Haptics { id: haptics }
 
@@ -130,24 +132,40 @@ Item {
     readonly property bool onFootOrWheels: Navigator.mode !== "transit" || Navigator.transitPhase === "walk"
 
     // --- Top banner ----------------------------------------------------
+    // A square card in the top-left corner while turn-by-turn guidance is
+    // showing; its size follows the window (so it shrinks in split screen).
+    // The other states (transit, waiting for GPS, ...) use a short, wider
+    // card. Motorway ramps and exits get the blue motorway-sign look.
+    readonly property bool turnCard: onFootOrWheels && Navigator.state === "guiding" && !Navigator.rerouting
+    readonly property real cardSide: Math.max(104 * M.dp, Math.min(240 * M.dp, Math.min(width, height) * 0.36))
+    readonly property var roadSign: Fmt.roadSign(Navigator.maneuverAction, Navigator.instruction)
+    readonly property bool motorway: turnCard && Navigator.mode === "car" && roadSign.highway
+
     Rectangle {
         id: banner
-        width: parent.width
-        height: 118 * M.dp
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: M.spacingS
+        width: root.turnCard ? root.cardSide
+                             : Math.min(root.width - 2 * M.spacingS, Math.max(root.cardSide * 2, 300 * M.dp))
+        height: root.turnCard ? root.cardSide : Math.max(80 * M.dp, root.cardSide * 0.6)
+        radius: M.restyled ? 0 : 12 * M.dp
         // Tints amber while off the planned route or hurrying for a
-        // connection, green once it's time to get off.
+        // connection, green once it's time to get off, blue for motorway
+        // ramps and exits.
         color: Navigator.mode === "transit" && Navigator.transitPhase === "alight" ? M.good
                 : (Navigator.state === "guiding" && (Navigator.offRoute || (root.onFootOrWheels && Navigator.hurry))) ? M.traffic
+                : root.motorway ? "#00549f"
                 : M.banner
         visible: Navigator.state !== "arrived"
 
         Rectangle {
-            visible: M.sign
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: M.borderW * 1.5
-            color: M.borderColor
+            visible: M.sign && !root.motorway
+            anchors.fill: parent
+            radius: parent.radius
+            color: "transparent"
+            border.width: M.borderW * 1.5
+            border.color: M.borderColor
         }
         Rectangle {
             visible: M.quiet
@@ -157,53 +175,97 @@ Item {
             width: 4 * M.dp
             color: M.primary
         }
+        // The white inner frame of a motorway sign.
+        Rectangle {
+            visible: root.motorway
+            anchors.fill: parent
+            anchors.margins: 3 * M.dp
+            radius: Math.max(0, parent.radius - 3 * M.dp)
+            color: "transparent"
+            border.width: Math.max(2, 2 * M.dp)
+            border.color: "#ffffff"
+        }
 
-        Row {
-            visible: root.onFootOrWheels && Navigator.state === "guiding" && !Navigator.rerouting
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.leftMargin: M.spacingM
-            anchors.topMargin: M.spacingS
-            spacing: M.spacingM
+        Item {
+            id: turnContent
+            visible: root.turnCard
+            anchors.fill: parent
+            readonly property real pad: root.cardSide * 0.08
 
             Icon {
+                id: turnIcon
+                x: turnContent.pad
+                y: turnContent.pad
                 name: Fmt.turnIcon(Navigator.maneuverAction, Navigator.maneuverDirection)
-                size: 48 * M.dp
+                size: root.cardSide * 0.34
                 color: "#ffffff"
             }
+            MText {
+                id: turnDistance
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: turnIcon.bottom
+                anchors.margins: turnContent.pad
+                anchors.topMargin: 0
+                font.pixelSize: root.cardSide * 0.17
+                font.weight: M.weightSemiBold
+                color: "#ffffff"
+                text: Fmt.distance(Navigator.distanceToManeuver, AppSettings.units)
+            }
             Column {
-                spacing: 2 * M.dp
-                width: banner.width - 48 * M.dp - M.spacingM * 3 - thenChip.width
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: turnDistance.bottom
+                anchors.bottom: parent.bottom
+                anchors.margins: turnContent.pad
+                anchors.topMargin: 0
+                clip: true
+                spacing: 1
                 MText {
-                    variant: "title"
+                    visible: root.motorway && (root.roadSign.ref !== "" || root.roadSign.exitNo !== "")
+                    width: parent.width
+                    font.pixelSize: root.cardSide * 0.115
+                    font.weight: M.weightSemiBold
                     color: "#ffffff"
-                    text: Fmt.distance(Navigator.distanceToManeuver, AppSettings.units)
+                    text: (root.roadSign.exitNo !== "" ? qsTr("Exit %1").arg(root.roadSign.exitNo) : "")
+                          + (root.roadSign.exitNo !== "" && root.roadSign.ref !== "" ? " · " : "")
+                          + root.roadSign.ref
                 }
                 MText {
-                    variant: "body"
-                    color: Qt.rgba(1, 1, 1, 0.9)
                     width: parent.width
-                    elide: Text.ElideRight
-                    maximumLineCount: 2
+                    font.pixelSize: root.cardSide * 0.085
+                    color: Qt.rgba(1, 1, 1, 0.92)
                     wrapMode: Text.WordWrap
-                    // First sentence only; the full instruction is still spoken/shown
-                    // in full once voice guidance lands (Milestone 2, later step).
+                    maximumLineCount: root.motorway && root.roadSign.ref !== "" ? 2 : 3
+                    elide: Text.ElideRight
+                    // First sentence only; the full instruction is still spoken.
                     text: Navigator.mode === "transit" && Navigator.hurry
                           ? qsTr("Hurry — %1 departs in %2").arg(Navigator.lineName).arg(Fmt.duration(Navigator.secondsToDeparture))
-                          : (Navigator.instruction || "").split(". ")[0]
+                          : (root.motorway && root.roadSign.toward !== "" ? root.roadSign.toward
+                                                                         : (Navigator.instruction || "").split(". ")[0])
                 }
             }
         }
 
-        Row {
+        Column {
             id: thenChip
-            visible: root.onFootOrWheels && Navigator.hasThen && Navigator.state === "guiding" && !Navigator.rerouting
+            visible: root.turnCard && Navigator.hasThen
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.rightMargin: M.spacingM
-            spacing: M.spacingXs
-            MText { variant: "caption"; color: Qt.rgba(1, 1, 1, 0.85); text: qsTr("Then"); anchors.verticalCenter: parent.verticalCenter }
-            Icon { name: Fmt.turnIcon(Navigator.thenAction, Navigator.thenDirection); size: 26 * M.dp; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter }
+            anchors.top: parent.top
+            anchors.margins: root.cardSide * 0.08
+            spacing: 0
+            MText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                font.pixelSize: root.cardSide * 0.08
+                color: Qt.rgba(1, 1, 1, 0.85)
+                text: qsTr("Then")
+            }
+            Icon {
+                anchors.horizontalCenter: parent.horizontalCenter
+                name: Fmt.turnIcon(Navigator.thenAction, Navigator.thenDirection)
+                size: root.cardSide * 0.2
+                color: "#ffffff"
+            }
         }
 
         // --- Transit: waiting to board --------------------------------
@@ -301,6 +363,13 @@ Item {
             anchors.centerIn: parent
             spacing: M.spacingXs
             MText { anchors.horizontalCenter: parent.horizontalCenter; variant: "subtitle"; color: "#ffffff"; text: qsTr("Waiting for GPS…") }
+            MText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                variant: "caption"
+                color: Qt.rgba(1, 1, 1, 0.85)
+                text: root.gpsAccuracy < 0 ? qsTr("No location yet")
+                                           : qsTr("Accuracy %1 m, too rough").arg(Math.round(root.gpsAccuracy))
+            }
         }
 
         Column {
@@ -321,6 +390,7 @@ Item {
     }
 
     RoundIconButton {
+        id: muteButton
         anchors.left: parent.left
         anchors.top: banner.bottom
         anchors.margins: M.spacingM
@@ -330,13 +400,37 @@ Item {
 
     RoundIconButton {
         anchors.right: parent.right
-        anchors.top: banner.bottom
+        anchors.top: parent.top
         anchors.margins: M.spacingM
         iconName: root.following ? "fullscreen" : "navigation"
         onClicked: {
             root.following = !root.following
             root.followToggled(root.following)
         }
+    }
+
+    // Stop / give-way sign or speed camera ahead (RoadAlerts). Right of the
+    // turn card when there is room before the follow button, else under the
+    // mute button.
+    RoadAlertChip {
+        id: alertChip
+        readonly property real room: root.width - (banner.x + banner.width) - M.spacingS
+                                     - (44 * M.dp + 2 * M.spacingM)
+        readonly property bool beside: room >= 124 * M.dp
+        compact: room < 230 * M.dp
+        x: beside ? banner.x + banner.width + M.spacingS : M.spacingM
+        y: beside ? banner.y : muteButton.y + muteButton.height + M.spacingS
+        z: 5
+        visible: Navigator.mode === "car" && Navigator.state !== "arrived" && RoadAlerts.kind !== ""
+    }
+
+    // Posted speed limit of the road, lower left above the trip bar.
+    SpeedLimitSign {
+        anchors.left: parent.left
+        anchors.bottom: bottomBar.top
+        anchors.margins: M.spacingM
+        visible: Navigator.mode === "car" && Navigator.state !== "arrived" && RoadAlerts.speedLimit > 0
+                 && AppSettings.speedLimitSign
     }
 
     // Closer/further slider for the 3D driving view (top = closer).

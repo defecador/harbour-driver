@@ -61,6 +61,7 @@ void TripPlanner::clear()
 void TripPlanner::swap()
 {
     std::swap(m_from, m_to);
+    resetTolls();
     emit fromChanged();
     emit toChanged();
     plan();
@@ -83,10 +84,136 @@ void TripPlanner::plan()
     emit resultsChanged();
 }
 
+void TripPlanner::resetTolls()
+{
+    if (m_tollOrder.isEmpty() && m_avoidTolls.isEmpty() && m_tollSegments.isEmpty())
+        return;
+    m_tollOrder.clear();
+    m_avoidTolls.clear();
+    m_tollSegments.clear();
+    emit tollsChanged();
+}
+
+QVariantList TripPlanner::tollCountries() const
+{
+    QVariantList out;
+    for (const QString &c : m_tollOrder) {
+        QVariantMap m;
+        m[QStringLiteral("code")] = c;
+        m[QStringLiteral("avoid")] = m_avoidTolls.contains(c);
+        out.append(m);
+    }
+    return out;
+}
+
+// Remembers which countries charge tolls and the road segments to avoid them.
+void TripPlanner::noteTolls(const QVariantList &items)
+{
+    for (const QVariant &v : items) {
+        const QVariantMap it = v.toMap();
+        for (const QString &c : it.value(QStringLiteral("tollCountries")).toStringList()) {
+            if (!m_tollOrder.contains(c))
+                m_tollOrder.append(c);
+        }
+        const QVariantMap segs = it.value(QStringLiteral("tollSegments")).toMap();
+        for (auto s = segs.constBegin(); s != segs.constEnd(); ++s) {
+            QStringList &have = m_tollSegments[s.key()];
+            for (const QString &ref : s.value().toStringList()) {
+                if (!have.contains(ref))
+                    have.append(ref);
+            }
+        }
+    }
+}
+
+void TripPlanner::setAvoidToll(const QString &country, bool avoid)
+{
+    if (avoid == m_avoidTolls.contains(country))
+        return;
+    if (avoid)
+        m_avoidTolls.append(country);
+    else
+        m_avoidTolls.removeAll(country);
+    emit tollsChanged();
+    if (m_from.isEmpty() || m_to.isEmpty())
+        return;
+    // Only the car route is planned again.
+    ++m_carGen;
+    m_status[QStringLiteral("car")] = QStringLiteral("loading");
+    m_errors.remove(QStringLiteral("car"));
+    emit resultsChanged();
+    requestCar(m_generation, m_carGen, 0);
+}
+
+// HERE can't limit "avoid toll roads" to one country, so the toll road
+// segments of the chosen countries (seen on the first plan) are avoided one
+// by one. That can push the route onto other toll roads of the same country,
+// so it is repeated with those too, a few times at most (see below).
+void TripPlanner::requestCar(int gen, int carGen, int round)
+{
+    const QString key = m_settings->hereApiKey();
+    const auto from = navPoint(m_from), to = navPoint(m_to);
+    QStringList avoidSegs;
+    for (const QString &c : m_avoidTolls) {
+        for (const QString &ref : m_tollSegments.value(c)) {
+            if (!avoidSegs.contains(ref))
+                avoidSegs.append(ref);
+        }
+    }
+    const QUrl url = HereUrls::route(key, QStringLiteral("car"), from, to, m_settings->lang(), m_settings->units(),
+                                     2, -1, QVector<HereUrls::LatLng>(), QString(), /*withTolls=*/true);
+    auto done = [this, gen, carGen, round, avoidSegs](bool ok, const QJsonObject &json, const QString &err) {
+        if (gen != m_generation || carGen != m_carGen)
+            return;
+        QVariantList items = ok ? ItineraryParser::parseRoutes(json, QStringLiteral("car")) : QVariantList();
+        if (ok && !items.isEmpty()) {
+            noteTolls(items);
+            QVariantMap first = items.first().toMap();
+            // Tolls of an avoided country still on the best route: more segments to avoid?
+            QStringList failed;
+            bool more = false;
+            const QVariantMap segs = first.value(QStringLiteral("tollSegments")).toMap();
+            for (const QString &c : m_avoidTolls) {
+                if (!first.value(QStringLiteral("tollCountries")).toStringList().contains(c))
+                    continue;
+                failed.append(c);
+                for (const QString &ref : segs.value(c).toStringList()) {
+                    if (!avoidSegs.contains(ref))
+                        more = true;
+                }
+            }
+            // Avoiding one stretch sends the route over the next toll road, so
+            // this takes several rounds (France to Italy took four). HERE
+            // accepts at most 1000 segments.
+            if (more && round < 5 && avoidSegs.size() < 900) {
+                requestCar(gen, carGen, round + 1);
+                return;
+            }
+            for (int i = 0; i < items.size(); ++i) {
+                QVariantMap it = items[i].toMap();
+                it[QStringLiteral("avoidSegments")] = avoidSegs;
+                if (i == 0 && !failed.isEmpty())
+                    it[QStringLiteral("tollsNotAvoided")] = failed;
+                items[i] = it;
+            }
+        }
+        finish(QStringLiteral("car"), ok, items, err);
+        emit tollsChanged();
+    };
+    if (avoidSegs.isEmpty())
+        m_pending.append(m_client->get(url, QStringLiteral("route_car"), done));
+    else
+        m_pending.append(m_client->post(url, HereUrls::avoidSegmentsBody(avoidSegs), QStringLiteral("route_car_avoid"), done));
+}
+
 void TripPlanner::request(const QString &mode)
 {
     if (mode == QLatin1String("bicycle")) {
         requestBicycle();
+        return;
+    }
+    if (mode == QLatin1String("car")) {
+        requestCar(m_generation, m_carGen, 0);
         return;
     }
     const int gen = m_generation;

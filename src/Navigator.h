@@ -48,6 +48,12 @@ class Navigator : public QObject
     // this only to approximate which prefix of `coordinates` to grey out,
     // not for anything timing- or distance-critical.
     Q_PROPERTY(qreal traveledFraction READ traveledFraction NOTIFY maneuverChanged)
+    // The last fix moved onto the route, while it is close enough to count as
+    // being on it; `snapped` is false when off route (or in transit).
+    Q_PROPERTY(bool snapped READ snapped NOTIFY snappedChanged)
+    Q_PROPERTY(double snappedLat READ snappedLat NOTIFY snappedChanged)
+    Q_PROPERTY(double snappedLng READ snappedLng NOTIFY snappedChanged)
+    Q_PROPERTY(double snappedHeading READ snappedHeading NOTIFY snappedChanged)
 
     Q_PROPERTY(bool offRoute READ offRoute NOTIFY stateChanged)
     Q_PROPERTY(bool rerouting READ rerouting NOTIFY stateChanged)
@@ -111,6 +117,10 @@ public:
         return m_remainingSeconds;
     }
     QString arrivalText() const;
+    bool snapped() const { return m_snapped; }
+    double snappedLat() const { return m_snappedLat; }
+    double snappedLng() const { return m_snappedLng; }
+    double snappedHeading() const { return m_snappedHeading; }
     qreal traveledFraction() const { return m_totalLength > 0 ? qBound(qreal(0), m_traveled / m_totalLength, qreal(1)) : 0.0; }
 
     bool offRoute() const { return m_offRoute; }
@@ -170,6 +180,7 @@ public:
 signals:
     void stateChanged();
     void maneuverChanged();
+    void snappedChanged();
     void transitChanged();
     void stopsChanged();
     // kind: "far" | "near" | "now" | "offroute" | "rerouting" | "rerouted" | "arrived"
@@ -283,6 +294,9 @@ private:
     qreal m_totalLength = 0;
 
     int m_stepIndex = 1;        // index into m_maneuvers of the upcoming maneuver
+    QStringList m_avoidSegments;   // toll road segments to keep avoiding when rerouting
+    bool m_snapped = false;
+    double m_snappedLat = 0, m_snappedLng = 0, m_snappedHeading = 0;
     int m_lastMatchPoint = 0;   // last matched segment start index, for windowed search
     qreal m_traveled = 0;       // metres along the route
 

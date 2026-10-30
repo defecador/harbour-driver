@@ -47,6 +47,10 @@
         <source>When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors. The 3D driving view uses OpenFreeMap vector tiles, and the greenest cycling route is calculated by Valhalla (FOSSGIS) from OpenStreetMap data © OpenStreetMap contributors.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Stop sign, give-way sign and speed camera warnings use OpenStreetMap data © OpenStreetMap contributors, available under the Open Database License (ODbL).</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>AppRoot</name>
@@ -56,6 +60,10 @@
     </message>
     <message>
         <source>Dropped pin</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No sign data for this area. Download a country in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -290,6 +298,18 @@
         <source>stop</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Exit %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No location yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Accuracy %1 m, too rough</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Navigator</name>
@@ -383,6 +403,18 @@
         <source>No routes found.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Toll roads on this route</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Avoid tolls in %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t avoid all tolls in %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
@@ -392,6 +424,21 @@
     </message>
     <message>
         <source>Arrive at %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>RoadAlertChip</name>
+    <message>
+        <source>Stop sign</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Give way</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed camera</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -532,6 +579,138 @@
         <source>Night</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Warnings while driving</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warn about stop and give-way signs ahead</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed camera alerts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning about speed cameras while driving is banned in some countries, for example Germany and Switzerland. You are responsible for using this lawfully. Warnings come from OpenStreetMap data and can be incomplete.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sign data by country</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%n country downloaded</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Download the countries you drive in</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Your voice: record a short phrase for each warning. It plays when the sign is ahead, and music is turned down meanwhile.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop sign</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Give way</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Speed camera</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recording... tap to stop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Recorded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not recorded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show the speed limit of the road</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SignPacks</name>
+    <message>
+        <source>No sign data has been published yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t load the country list. Check your connection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t save the file.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Download failed. Check your connection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The downloaded file was damaged. Try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SignPacksScreen</name>
+    <message>
+        <source>Sign data by country</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Downloading... %1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Downloaded - update available</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Downloaded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stop sign, give-way sign and speed camera data (c) OpenStreetMap contributors, ODbL. Downloaded packs work offline.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>1 country</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 countries</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 downloaded</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>TransitDetailsScreen</name>
@@ -583,6 +762,25 @@
     <name>TripPlanner</name>
     <message>
         <source>Add your HERE API key in Settings to plan routes.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>VoiceClips</name>
+    <message>
+        <source>Microphone access was denied.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Microphone access is off. Turn it on for Driver in the system settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t start recording.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nothing was recorded.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -13,6 +13,9 @@ double metersBetween(double lat1, double lng1, double lat2, double lng2);
 // Bearing in degrees [0,360) from point 1 to point 2, 0 = north.
 double bearingDegrees(double lat1, double lng1, double lat2, double lng2);
 
+// Smallest absolute difference between two bearings, in degrees [0,180].
+double angleDiff(double a, double b);
+
 struct Projection {
     double lat = 0;
     double lng = 0;

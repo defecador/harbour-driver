@@ -87,6 +87,13 @@ Item {
                     text: qsTr("When no HERE key is set, the map falls back to OpenFreeMap / OpenStreetMap contributors. The 3D driving view uses OpenFreeMap vector tiles, and the greenest cycling route is calculated by Valhalla (FOSSGIS) from OpenStreetMap data © OpenStreetMap contributors.")
                 }
 
+                MText {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: M.inkMuted
+                    text: qsTr("Stop sign, give-way sign and speed camera warnings use OpenStreetMap data © OpenStreetMap contributors, available under the Open Database License (ODbL).")
+                }
+
                 MText { variant: "subtitle"; text: qsTr("Fonts & icons") }
                 MText {
                     width: parent.width

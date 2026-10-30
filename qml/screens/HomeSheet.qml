@@ -7,6 +7,10 @@ Item {
     width: parent ? parent.width : 360
     height: parent ? parent.height : 400
 
+    // True when the sheet is tall enough to scroll its content instead of
+    // being dragged (the side panel, or the sheet pulled all the way up).
+    property bool scrollable: false
+
     signal searchTapped()
     signal placeTapped(var place)
     signal settingsTapped()
@@ -16,7 +20,8 @@ Item {
         anchors.fill: parent
         contentHeight: col.height
         clip: true
-        interactive: false
+        interactive: root.scrollable && contentHeight > height
+        boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: col

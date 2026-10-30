@@ -110,6 +110,7 @@ function turnIcon(action, direction) {
     case "roundaboutExit": return "roundabout_right";
     case "rampProceed": return "ramp_right";
     case "turn":
+    case "ramp":
     case "exit":
         switch (direction) {
         case "left": return "turn_left";
@@ -124,6 +125,48 @@ function turnIcon(action, direction) {
     }
 }
 
+// HERE's actions carry no road class, so motorway manoeuvres are recognised
+// from the action type (ramp / exit) and from the road named in the text
+// ("... onto A100 (Stadtring)", "... take exit 10 toward Potsdam onto A115").
+// Returns {highway, ref, exitNo, toward}.
+function roadSign(action, instruction) {
+    var text = (instruction || "").split(/\.\s/)[0]
+    var ref = ""
+    var m = /\b(?:onto|on)\s+((?:[AEM]\s?\d{1,3}|I-\d{1,3}|BAB\s?\d{1,3})(?:-[A-Z0-9]+)?)\b/.exec(text)
+    if (m)
+        ref = m[1].replace(/\s+/, "").replace(/^BAB/, "A")
+    var named = /\b(motorway|freeway|highway|interstate|autobahn|expressway|autoroute|autostrada|autopista|autovia)\b/i.test(text)
+    var exitNo = ""
+    m = /\bexit\s+([0-9]+[A-Za-z]?)\b/i.exec(text)
+    if (m && action === "exit")
+        exitNo = m[1]
+    var toward = ""
+    m = /\btoward\s+(.+?)(?:\s+onto\s|$)/.exec(text)
+    if (m)
+        toward = m[1].split("/").slice(0, 2).join(" · ")
+    return {
+        highway: action === "ramp" || action === "exit" || ref.length > 0 || named,
+        ref: ref, exitNo: exitNo, toward: toward
+    }
+}
+
 function distanceMeters(o) {
     return o && o.distance !== undefined ? o.distance : -1;
+}
+
+// Country name for an ISO 3166 alpha-3 code as HERE reports it (the codes
+// seen on European toll routes); unknown codes are shown as they are.
+var COUNTRIES = {
+    ALB: "Albania", AND: "Andorra", AUT: "Austria", BEL: "Belgium", BGR: "Bulgaria", BIH: "Bosnia and Herzegovina",
+    BLR: "Belarus", CHE: "Switzerland", CYP: "Cyprus", CZE: "Czechia", DEU: "Germany", DNK: "Denmark",
+    ESP: "Spain", EST: "Estonia", FIN: "Finland", FRA: "France", GBR: "United Kingdom", GEO: "Georgia",
+    GRC: "Greece", HRV: "Croatia", HUN: "Hungary", IRL: "Ireland", ISL: "Iceland", ITA: "Italy",
+    LIE: "Liechtenstein", LTU: "Lithuania", LUX: "Luxembourg", LVA: "Latvia", MCO: "Monaco", MDA: "Moldova",
+    MKD: "North Macedonia", MLT: "Malta", MNE: "Montenegro", NLD: "Netherlands", NOR: "Norway", POL: "Poland",
+    PRT: "Portugal", ROU: "Romania", RUS: "Russia", SMR: "San Marino", SRB: "Serbia", SVK: "Slovakia",
+    SVN: "Slovenia", SWE: "Sweden", TUR: "Turkey", UKR: "Ukraine", XKX: "Kosovo"
+};
+
+function countryName(code) {
+    return COUNTRIES[code] || code;
 }

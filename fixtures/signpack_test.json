@@ -1,0 +1,11 @@
+{
+  "note": "Test sign data placed along the route_car fixture (Alexanderplatz to Brandenburg Gate, bearing 256). The first three should warn; the last three are decoys that must stay silent.",
+  "signs": [
+    { "lat": 52.519785, "lng": 13.40069,  "kind": "stop",    "bearing": 256 },
+    { "lat": 52.518474, "lng": 13.392088, "kind": "giveWay", "bearing": 256 },
+    { "lat": 52.517381, "lng": 13.384919, "kind": "camera",  "maxspeed": 50 },
+    { "lat": 52.519129, "lng": 13.396389, "kind": "stop",    "bearing": 76 },
+    { "lat": 52.519671, "lng": 13.400432, "kind": "stop",    "bearing": 346 },
+    { "lat": 52.517426, "lng": 13.389471, "kind": "stop",    "bearing": 256 }
+  ]
+}

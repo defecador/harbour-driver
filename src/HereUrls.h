@@ -1,7 +1,9 @@
 #ifndef HEREURLS_H
 #define HEREURLS_H
 
+#include <QByteArray>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QVector>
 
@@ -24,7 +26,12 @@ QUrl revgeocode(const QString &key, LatLng at, const QString &lang);
 // vias: stopovers to pass through, in order, between from and to (walk/bike "add a stop").
 QUrl route(const QString &key, const QString &mode, LatLng from, LatLng to,
            const QString &lang, const QString &units, int alternatives, int courseDegrees = -1,
-           const QVector<LatLng> &vias = QVector<LatLng>(), const QString &routingMode = QString());
+           const QVector<LatLng> &vias = QVector<LatLng>(), const QString &routingMode = QString(),
+           bool withTolls = false);
+
+// JSON body for POSTing a route request that must avoid these road segments
+// (HERE segment references, e.g. "here:cm:segment:123#+").
+QByteArray avoidSegmentsBody(const QStringList &segments);
 
 // Greenest-route alternative for cycling: the public Valhalla (OpenStreetMap)
 // server, which can prefer bike paths and quiet streets (HERE cannot).

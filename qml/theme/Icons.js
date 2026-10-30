@@ -52,13 +52,23 @@ var GLYPHS = {
     "expand_more": 0xe5cf,
     "expand_less": 0xe5ce,
     "chevron_right": 0xe5cc,
+    "chevron_left": 0xe5cb,
     "schedule": 0xe8b5,
     "more_vert": 0xe5d4,
     "open_in_new": 0xe89e,
     "near_me": 0xe569,
     "fullscreen": 0xe5d0,
     "volume_up": 0xe050,
-    "volume_off": 0xe04f
+    "volume_off": 0xe04f,
+    "warning": 0xe002,
+    "photo_camera": 0xe412,
+    "mic": 0xe029,
+    "stop": 0xe047,
+    "play_arrow": 0xe037,
+    "delete": 0xe872,
+    "download": 0xf090,
+    "add": 0xe145,
+    "remove": 0xe15b
 };
 
 function glyph(name) {

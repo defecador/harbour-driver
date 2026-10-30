@@ -13,6 +13,9 @@ class AppSettings : public QObject
     Q_PROPERTY(QString mapStyle READ mapStyle WRITE setMapStyle NOTIFY mapStyleChanged)
     Q_PROPERTY(bool traffic READ traffic WRITE setTraffic NOTIFY trafficChanged)
     Q_PROPERTY(bool vibration READ vibration WRITE setVibration NOTIFY vibrationChanged)
+    Q_PROPERTY(bool warnSigns READ warnSigns WRITE setWarnSigns NOTIFY warnSignsChanged)
+    Q_PROPERTY(bool speedLimitSign READ speedLimitSign WRITE setSpeedLimitSign NOTIFY speedLimitSignChanged)
+    Q_PROPERTY(bool speedCameras READ speedCameras WRITE setSpeedCameras NOTIFY speedCamerasChanged)
     Q_PROPERTY(QString uiStyle READ uiStyle WRITE setUiStyle NOTIFY uiStyleChanged)
     Q_PROPERTY(bool view3d READ view3d WRITE setView3d NOTIFY view3dChanged)
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
@@ -37,6 +40,12 @@ public:
     void setTraffic(bool on);
     bool vibration() const;
     void setVibration(bool on);
+    bool warnSigns() const;
+    void setWarnSigns(bool on);
+    bool speedLimitSign() const;
+    void setSpeedLimitSign(bool on);
+    bool speedCameras() const;
+    void setSpeedCameras(bool on);
     QString uiStyle() const;
     void setUiStyle(const QString &s);
     bool view3d() const;
@@ -67,6 +76,9 @@ signals:
     void view3dChanged();
     void uiStyleChanged();
     void vibrationChanged();
+    void warnSignsChanged();
+    void speedCamerasChanged();
+    void speedLimitSignChanged();
     void themeChanged();
     void unitsChanged();
     void homeChanged();

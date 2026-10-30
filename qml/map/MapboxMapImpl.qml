@@ -90,6 +90,9 @@ Item {
         meDot.navigating = active
     }
 
+    // Heading arrow (navigation) or plain dot (follow-me).
+    function setArrow(on) { meDot.navigating = on }
+
     function followTo(lat, lng, headingDeg) {
         // The map itself is rotated to the heading in the pitched view, so the
         // marker must point straight up there.
@@ -139,7 +142,14 @@ Item {
     property var _routeIds: []
     property bool _traveledAdded: false
 
+    property var _trafficIds: []
+
     function clearRoutes() {
+        for (var t = 0; t < _trafficIds.length; t++) {
+            map.removeLayer(_trafficIds[t])
+            map.removeSource(_trafficIds[t])
+        }
+        _trafficIds = []
         for (var i = 0; i < _routeIds.length; i++) {
             var sid = _routeIds[i]
             map.removeLayer(sid + "-outline")
@@ -163,7 +173,7 @@ Item {
                 "type": "line",
                 "source": "navTraveled",
                 "layout": {"line-cap": "round", "line-join": "round"},
-                "paint": {"line-color": color, "line-width": 15.0}
+                "paint": {"line-color": color, "line-width": 7.5}
             })
             root._traveledAdded = true
         } else {
@@ -179,16 +189,18 @@ Item {
         }
     }
 
-    function addRoute(sourceId, coordinates, color, selected, dashed) {
+    // trafficSegments: [{coordinates, color}] drawn over the route line (the
+    // slow stretches in orange/red).
+    function addRoute(sourceId, coordinates, color, selected, dashed, trafficSegments) {
         map.addSourceLine(sourceId, coordinates)
         map.addLayer(sourceId + "-outline", {
             "type": "line",
             "source": sourceId,
             "layout": {"line-cap": "round", "line-join": "round"},
-            "paint": {"line-color": "#ffffff", "line-width": selected ? 21.0 : 14.0,
+            "paint": {"line-color": "#ffffff", "line-width": selected ? 10.5 : 7.0,
                       "line-opacity": selected ? 1.0 : 0.85}
         })
-        var paint = {"line-color": color, "line-width": selected ? 15.0 : 10.0}
+        var paint = {"line-color": color, "line-width": selected ? 7.5 : 5.0}
         if (dashed) paint["line-dasharray"] = [2, 2]
         map.addLayer(sourceId, {
             "type": "line",
@@ -197,6 +209,18 @@ Item {
             "paint": paint
         })
         _routeIds.push(sourceId)
+        var segs = trafficSegments || []
+        for (var k = 0; k < segs.length; k++) {
+            var tid = sourceId + "-t" + k
+            map.addSourceLine(tid, segs[k].coordinates)
+            map.addLayer(tid, {
+                "type": "line",
+                "source": tid,
+                "layout": {"line-cap": "round", "line-join": "round"},
+                "paint": {"line-color": segs[k].color, "line-width": selected ? 7.5 : 5.0}
+            })
+            _trafficIds.push(tid)
+        }
     }
 
     // --- Pins --------------------------------------------------------

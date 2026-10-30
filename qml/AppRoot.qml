@@ -15,10 +15,18 @@ Item {
     // Wide windows (a tablet in landscape) lay the screens out as a left
     // panel beside the map; narrow ones (phone, or half of a split screen)
     // keep the bottom sheet and full-screen pages.
-    readonly property bool wide: width >= 840 * M.dp
+    readonly property bool wide: width >= 840 * M.dp && width > height * 1.1
     readonly property real panelW: Math.min(440 * M.dp, width * 0.42)
-    readonly property real mapLeftInset: wide && !navItem ? panelW : 0
+    readonly property bool panelHidden: sheet.sheetState === "hidden" && stack.depth === 0
+    readonly property real mapLeftInset: wide && !navItem && !panelHidden ? panelW : 0
     onMapLeftInsetChanged: mapView.setMargins(mapLeftInset, 0, 0, 0)
+
+    // Free drive bookkeeping: whether follow-me should come back when the
+    // screens on top of the map are closed, and the sheet state to restore
+    // when the driving view ends.
+    property bool _resumeFollow: false
+    property string _sheetBeforeDrive: ""
+    property bool _noDataShown: false
 
     function meAsPlace() {
         return {
@@ -78,9 +86,15 @@ Item {
                 mapView.clearRoutes()
                 mapView.clearPins()
             })
+            item.inlineMap = Qt.binding(function() { return !root.wide })
             item.previewFrame.connect(function(x, y, w, h) {
                 var coords = TripPlanner.selected.coordinates || []
-                mapView.fitInRect(coords, x, y, w, h)
+                // Wide windows have no map window inside the list: the route
+                // is framed in the big map area beside the panel instead.
+                if (root.wide)
+                    mapView.fitInRect(coords, root.mapLeftInset, 0, root.width - root.mapLeftInset, root.height)
+                else
+                    mapView.fitInRect(coords, x, y, w, h)
             })
             item.editField.connect(function(field) {
                 var search = stack.push(Qt.resolvedUrl("screens/SearchScreen.qml"), {})
@@ -140,13 +154,22 @@ Item {
             return
         }
         root.navItinerary = itin
+        // Free drive ends here; the 3D style stays when the route is a car one.
+        root._resumeFollow = false
+        mapView.setFollowMe(false, itin.mode === "car" && AppSettings.view3d)
         Navigator.start(itin, TripPlanner.to)
+        if (itin.mode === "car") {
+            RoadAlerts.setRoute(itin.coordinates)
+            RoadAlerts.setRouteLimits(itin.speedLimits || [])
+        } else
+            RoadAlerts.clearRoute()
         if (itin.mode === "transit" && simulate)
             Navigator.setSimulationClock(true, 6.0)
         // Car gets a pitched, heading-up 3D view; walk/bike/transit stay
         // flat and north-up.
         root.navTilt = itin.mode === "car" && AppSettings.view3d ? 60 : 0
         root._lastOverlayFraction = -1
+        root._overlayCum = []
         mapView.setPovZoom(root.povZoom)
         mapView.startFollowMode(root.navTilt, simulate)
         stack.clear()
@@ -154,9 +177,11 @@ Item {
                               {"simulate": simulate === true, "povControls": root.navTilt > 0, "povZoom": root.povZoom})
         root.navItem = item
         if (item) {
+            item.gpsAccuracy = Qt.binding(function() { return mapView.fixAccuracy })
             item.closed.connect(function() { root.stopNavigation() })
             item.positionSimulated.connect(function(lat, lng, heading) {
-                mapView.updateFollowPosition(lat, lng, heading)
+                mapView.setFollowTarget(lat, lng, heading, -1)
+                RoadAlerts.updatePosition(lat, lng, -1, heading)
             })
             item.povZoomChanged.connect(function() {
                 root.povZoom = item.povZoom
@@ -217,9 +242,14 @@ Item {
             if (!root.navItem)
                 return
             root.navItinerary = newItinerary
+            if (Navigator.mode === "car") {
+                RoadAlerts.setRoute(newItinerary.coordinates)
+                RoadAlerts.setRouteLimits(newItinerary.speedLimits || [])
+            }
             mapView.clearRoutes()
             mapView.showRoutes([newItinerary], 0)
             root._lastOverlayFraction = -1
+            root._overlayCum = []
         }
     }
 
@@ -231,11 +261,14 @@ Item {
         root.navItinerary = null
         Navigator.stop()
         Navigator.setSimulationClock(false)
+        RoadAlerts.clearRoute()
         mapView.stopFollowMode()
         mapView.clearRoutes()
         mapView.clearPins()
         stack.clear()
         root.navItem = null
+        // Still driving? Carry on with the free-drive view.
+        mapView.setFollowMe(true, false)
     }
 
     Connections {
@@ -243,12 +276,11 @@ Item {
         onFollowInterrupted: if (root.navItem) root.navItem.following = false
     }
 
-    // Greys out the part of the selected route already covered, using
-    // Navigator's traveledFraction as an index into the same coordinate
-    // list the route was drawn from. Approximate (points aren't evenly
-    // spaced by distance) and throttled to ~20m of travel, since it's a
-    // cosmetic overlay, not something guidance itself depends on.
+    // Greys out the part of the selected route already covered, up to the
+    // distance Navigator has matched (points aren't evenly spaced, so this
+    // has to go by metres, not by point count). Throttled to ~20m of travel.
     property real _lastOverlayFraction: -1
+    property var _overlayCum: []
     function updateTraveledOverlay() {
         if (!root.navItem || Navigator.mode === "transit")
             return
@@ -262,8 +294,23 @@ Item {
         if (frac < root._lastOverlayFraction + minStep && frac < 0.999)
             return
         root._lastOverlayFraction = frac
-        var count = Math.max(2, Math.min(coords.length, Math.round(coords.length * frac) + 1))
-        mapView.setTraveledCoordinates(coords.slice(0, count))
+        var cum = root._overlayCum
+        if (cum.length !== coords.length) {
+            cum = [0]
+            for (var i = 1; i < coords.length; i++)
+                cum.push(cum[i - 1] + coords[i - 1].distanceTo(coords[i]))
+            root._overlayCum = cum
+        }
+        var done = frac * cum[cum.length - 1]
+        var n = 1
+        while (n < cum.length - 1 && cum[n] < done)
+            n++
+        var line = coords.slice(0, n)
+        var a = coords[n - 1], b = coords[n]
+        var t = cum[n] > cum[n - 1] ? Math.min(1, (done - cum[n - 1]) / (cum[n] - cum[n - 1])) : 1
+        line.push(QtPositioning.coordinate(a.latitude + (b.latitude - a.latitude) * t,
+                                           a.longitude + (b.longitude - a.longitude) * t))
+        mapView.setTraveledCoordinates(line)
     }
 
     Connections {
@@ -278,7 +325,13 @@ Item {
 
     function openSettings() {
         var item = stack.push(Qt.resolvedUrl("screens/SettingsScreen.qml"), {})
-        if (item) item.closed.connect(function() { stack.pop() })
+        if (item) {
+            item.closed.connect(function() { stack.pop() })
+            item.signDataRequested.connect(function() {
+                var packs = stack.push(Qt.resolvedUrl("screens/SignPacksScreen.qml"), {})
+                if (packs) packs.closed.connect(function() { stack.pop() })
+            })
+        }
     }
 
     function openAbout() {
@@ -289,6 +342,7 @@ Item {
     MapView {
         id: mapView
         anchors.fill: parent
+        freeDriveAllowed: stack.depth === 0 && !root.navItem
         onMapClicked: root.mapTappedDuringNav(coordinate)
         onMapLongPressed: {
             if (root.mapTappedDuringNav(coordinate))
@@ -342,9 +396,9 @@ Item {
         anchors.rightMargin: M.spacingM
         z: 20
         visible: (root.wide || sheet.sheetState !== "full") && stack.depth === 0
-        locating: mapView.hasFix
+        locating: mapView.followMe
         onLayersClicked: root.openLayers()
-        onLocateClicked: mapView.centerOnMe()
+        onLocateClicked: mapView.locateMe()
     }
 
     BottomSheet {
@@ -357,6 +411,7 @@ Item {
         visible: stack.depth === 0
 
         HomeSheet {
+            scrollable: root.wide || sheet.sheetState === "full"
             onSearchTapped: root.openSearch()
             onPlaceTapped: root.openPlaceCard(place)
             onSettingsTapped: root.openSettings()
@@ -379,6 +434,88 @@ Item {
         anchors.margins: M.spacingM
         anchors.leftMargin: root.mapLeftInset + M.spacingM
         anchors.bottomMargin: (stack.depth === 0 && !root.wide ? sheet.peekHeight : 0) + M.spacingM
+    }
+
+    // --- Free drive and road alerts ---------------------------------------
+    // Warnings run along a car route, or ahead of the car in free drive.
+    Binding {
+        target: RoadAlerts
+        property: "active"
+        value: (root.navItem !== null && Navigator.mode === "car") || mapView.freeDriving
+    }
+
+    Haptics { id: alertHaptics }
+
+    NavSystem {
+        active: mapView.freeDriving
+        screenOn: mapView.freeDriving
+    }
+
+    RoadAlertChip {
+        z: 25
+        // Clear of the sheet's side tab on wide screens.
+        x: root.mapLeftInset + M.spacingM + (root.wide ? 36 * M.dp : 0)
+        y: M.spacingM + AppTools.insetTop
+        visible: mapView.freeDriving && stack.depth === 0 && RoadAlerts.kind !== ""
+    }
+
+    // Speed limit of the road, lower left (navigation shows its own).
+    SpeedLimitSign {
+        z: 25
+        x: root.mapLeftInset + M.spacingM + (root.wide ? 36 * M.dp : 0)
+        y: root.height - height - M.spacingM
+        visible: mapView.freeDriving && stack.depth === 0 && RoadAlerts.speedLimit > 0
+                 && AppSettings.speedLimitSign
+    }
+
+    Connections {
+        target: RoadAlerts
+        onAlertStarted: {
+            // The navigation screen's mute button silences the voice as well.
+            if (root.navItem && root.navItem.muted)
+                return
+            VoiceClips.play(kind)
+            if (AppSettings.vibration)
+                alertHaptics.vibrate()
+        }
+        onNoDataChanged: {
+            if (RoadAlerts.noData && !root._noDataShown) {
+                root._noDataShown = true
+                snackbar.show(qsTr("No sign data for this area. Download a country in Settings."), "", 6000)
+            }
+        }
+    }
+
+    // The driving view takes the whole screen; the sheet comes back afterwards.
+    Connections {
+        target: mapView
+        onFreeDrivingChanged: {
+            if (mapView.freeDriving) {
+                root._sheetBeforeDrive = sheet.sheetState
+                if (stack.depth === 0)
+                    sheet.snapTo("hidden")
+            } else {
+                if (root._sheetBeforeDrive !== "" && sheet.sheetState === "hidden" && stack.depth === 0)
+                    sheet.snapTo(root._sheetBeforeDrive)
+                root._sheetBeforeDrive = ""
+            }
+        }
+    }
+
+    // Screens on top of the map (search, planner, settings...) pause follow-me;
+    // closing them brings it back.
+    Connections {
+        target: stack
+        onDepthChanged: {
+            if (stack.depth > 0) {
+                if (mapView.followMe)
+                    root._resumeFollow = true
+                mapView.setFollowMe(false, false)
+            } else if (root._resumeFollow && !mapView.navigating) {
+                root._resumeFollow = false
+                mapView.setFollowMe(true, false)
+            }
+        }
     }
 
     Connections {
@@ -427,6 +564,27 @@ Item {
             root.startPlanning(root.devSamplePlace())
             TripPlanner.selectedMode = "car"
             root.startNavigation(true)
+        } else if (name === "navigatereal") {
+            // Navigation fed by the device's own (or the emulator's) GPS fixes.
+            root.startPlanning(root.devSamplePlace())
+            TripPlanner.selectedMode = "car"
+            root.startNavigation(false)
+        } else if (name === "freedrive") {
+            // Free drive over the sample fixture route, without a destination:
+            // simulated fixes along it, with the sign pack in fixtures/.
+            AppSettings.speedCameras = true
+            TripPlanner.from = root.meAsPlace()
+            TripPlanner.to = root.devSamplePlace()
+            TripPlanner.selectedMode = "car"
+            var devConn = function() {
+                var itin = TripPlanner.selected
+                if (!itin || !itin.coordinates || itin.coordinates.length < 2)
+                    return
+                TripPlanner.resultsChanged.disconnect(devConn)
+                root.startDevFreeDrive(itin.coordinates)
+            }
+            TripPlanner.resultsChanged.connect(devConn)
+            TripPlanner.plan()
         } else if (name === "homeset") {
             // Home and Work saved with long addresses (use a blank config dir).
             AppSettings.home = {"title": "Karl-Liebknecht-Strasse 1, 10178 Berlin, Germany", "address": "", "lat": 52.52, "lng": 13.40}
@@ -451,12 +609,51 @@ Item {
             root.openLayers()
         } else if (name === "settings") {
             root.openSettings()
+        } else if (name === "signdata") {
+            var packsScreen = stack.push(Qt.resolvedUrl("screens/SignPacksScreen.qml"), {})
+            if (packsScreen) packsScreen.closed.connect(function() { stack.pop() })
         } else if (name === "about") {
             root.openAbout()
         } else if (name === "locate") {
             locateRetry.start()
         } else if (name === "osmtest") {
             mapView.debugSetStyle(AppTools.debugOsmStyleJson())
+        }
+    }
+
+    // Points every 14 m along the polyline, for the "freedrive" dev screen.
+    property var _devDrive: []
+    property int _devDriveIndex: 0
+
+    function startDevFreeDrive(coords) {
+        var pts = []
+        for (var i = 0; i < coords.length - 1; i++) {
+            var a = coords[i], b = coords[i + 1]
+            var len = a.distanceTo(b)
+            var hd = a.azimuthTo(b)
+            for (var d = 0; d < len; d += 14) {
+                var c = a.atDistanceAndAzimuth(d, hd)
+                pts.push({"lat": c.latitude, "lng": c.longitude, "heading": hd})
+            }
+        }
+        root._devDrive = pts
+        root._devDriveIndex = 0
+        mapView.simulating = true
+        mapView.setFollowMe(true, false)
+        devFreeDrive.start()
+    }
+
+    Timer {
+        id: devFreeDrive
+        interval: 250
+        repeat: true
+        onTriggered: {
+            if (root._devDriveIndex >= root._devDrive.length) {
+                stop()
+                return
+            }
+            var p = root._devDrive[root._devDriveIndex++]
+            mapView.simulateFix(p.lat, p.lng, 56, p.heading)
         }
     }
 

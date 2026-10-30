@@ -48,7 +48,11 @@ qt_add_executable(driver
     src/TripPlanner.cpp src/TripPlanner.h
     src/SearchController.cpp src/SearchController.h
     src/NavGeo.cpp src/NavGeo.h
-    src/Navigator.cpp src/NavigatorTransit.cpp src/Navigator.h)
+    src/Navigator.cpp src/NavigatorTransit.cpp src/Navigator.h
+    src/RoadAlerts.cpp src/RoadAlerts.h
+    src/SignPacks.cpp src/SignPacks.h
+    src/SpeedLimitStore.cpp src/SpeedLimitStore.h
+    src/VoiceClips.cpp src/VoiceClips.h)
 target_compile_definitions(driver PRIVATE APP_VERSION="${PROJECT_VERSION}")
 target_include_directories(driver PRIVATE src)
 target_link_libraries(driver PRIVATE Qt6::Core Qt6::Gui Qt6::Network Qt6::Positioning Qt6::Quick

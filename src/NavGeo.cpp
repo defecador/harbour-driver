@@ -43,6 +43,12 @@ double NavGeo::bearingDegrees(double lat1, double lng1, double lat2, double lng2
     return deg;
 }
 
+double NavGeo::angleDiff(double a, double b)
+{
+    double d = std::fmod(std::fabs(a - b), 360.0);
+    return d > 180.0 ? 360.0 - d : d;
+}
+
 NavGeo::Projection NavGeo::projectOntoSegment(double lat, double lng,
                                               double aLat, double aLng, double bLat, double bLng)
 {

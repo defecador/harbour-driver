@@ -18,6 +18,7 @@ Item {
     // Nothing extra for `active`: the app is a foreground activity that
     // holds the screen on while guiding. Background guidance with a
     // foreground service is a later step.
+    Component.onCompleted: AppTools.setKeepScreenOn(screenOn || active)
     onScreenOnChanged: AppTools.setKeepScreenOn(screenOn || active)
     onActiveChanged: AppTools.setKeepScreenOn(screenOn || active)
     Component.onDestruction: AppTools.setKeepScreenOn(false)
